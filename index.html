@@ -257,12 +257,17 @@ var PLATFORMS = ["instagram","tiktok","youtube","telegram","facebook"];
 var PLATFORM_LABEL = {instagram:"Instagram", tiktok:"TikTok", youtube:"YouTube", telegram:"Telegram", facebook:"Facebook"};
 
 /* ---------- claude capabilities ---------- */
+// NB: on a host without window.claude (e.g. a plain static deploy), referencing
+// the bare `claude` global throws synchronously — guard with typeof so this
+// never throws before an `await` gets a chance to yield. Invoked from the boot
+// section at the bottom, after every var/function this awaits are defined,
+// so the re-render is always safe whether it resolves same-tick or later.
 var sampleFn = null, downloadsFn = null;
-(async function initCaps(){
-  try{ sampleFn = await claude.use("sample"); }catch(e){ sampleFn = null; }
-  try{ downloadsFn = await claude.use("downloads"); }catch(e){ downloadsFn = null; }
+async function initCaps(){
+  try{ sampleFn = typeof claude!=="undefined" ? await claude.use("sample") : null; }catch(e){ sampleFn = null; }
+  try{ downloadsFn = typeof claude!=="undefined" ? await claude.use("downloads") : null; }catch(e){ downloadsFn = null; }
   renderAll(); // re-render once caps known so AI buttons reflect availability
-})();
+}
 
 function langInstruction(){
   return state.lang === "kk"
@@ -1091,6 +1096,7 @@ function srcCat(title, items){
 /* ---------- boot ---------- */
 bindTopNav();
 renderAll();
+initCaps();
 
 })();
 </script>
