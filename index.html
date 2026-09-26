@@ -62,7 +62,7 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:2px solid v
 .card + .card{margin-top:0}
 .stack{display:flex;flex-direction:column;gap:14px}
 .row{display:flex;gap:12px;flex-wrap:wrap}
-.row > *{flex:1;min-width:160px}
+.row.fields > *{flex:1;min-width:160px}
 .field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.03em}
 .field input,.field select,.field textarea{width:100%}
 .hint{color:var(--muted);font-size:12.5px}
@@ -391,7 +391,7 @@ function renderContentSub(root){
     card.className = "comp-card stack";
     card.innerHTML =
       '<div class="comp-head"><strong>'+ (esc(c.name)||"(без названия)") +'</strong>' +
-        (sampleFn ? '<button class="btn sm" data-act="ai">✦ Разобрать контент с Claude</button>' : '') +
+        aiButtonHtml('data-act="ai"', "✦ Разобрать контент с Claude") +
       '</div>' +
       '<div class="field"><label>Наблюдения: что и как публикует (рубрики, тон, форматы, примеры)</label>' +
         '<textarea rows="3" placeholder="Например: 3 Reels в неделю, юмористический тон, разбор закулисья съёмок…">'+esc(rec.notes)+'</textarea></div>' +
@@ -438,7 +438,7 @@ function renderProductSub(root){
   var wrap = document.createElement("div"); wrap.className="stack";
   var top = document.createElement("div");
   top.className = "section-title";
-  top.innerHTML = '<h3>Сравнение по продукту</h3>' + (sampleFn ? '<button class="btn sm" id="fillGaps">✦ Заполнить пробелы с Claude</button>' : '');
+  top.innerHTML = '<h3>Сравнение по продукту</h3>' + aiButtonHtml('id="fillGaps"', "✦ Заполнить пробелы с Claude");
   wrap.appendChild(top);
 
   var cols = [["positioning","Позиционирование"],["usp","УТП"],["format","Формат/продукт"],["audience","Аудитория"],["weak","Слабое место"]];
@@ -652,7 +652,7 @@ function renderTrendsSub(root){
   var head = document.createElement("div"); head.className="section-title";
   head.innerHTML = '<h3>Тренды и форматы</h3><div class="row" style="flex:none;gap:8px">' +
     '<button class="btn sm" id="addTrend">+ Добавить вручную</button>' +
-    (sampleFn ? '<button class="btn sm primary" id="aiTrends">✦ Предложить тренды с Claude</button>' : '') +
+    aiButtonHtml('id="aiTrends"', "✦ Предложить тренды с Claude", {primary:true}) +
     '</div>';
   wrap.appendChild(head);
 
@@ -707,7 +707,7 @@ function renderSummarySub(root){
   var canBuild = state.reg.length>0;
   wrap.innerHTML =
     '<div class="section-title"><h3>Консолидированный отчёт</h3>' +
-      (sampleFn ? '<button class="btn primary sm" id="buildSummary" '+(canBuild?"":"disabled")+'>✦ Собрать сравнительный анализ</button>' : '<span class="hint">AI недоступен — соберите анализ вручную из срезов выше.</span>') +
+      aiButtonHtml('id="buildSummary"', "✦ Собрать сравнительный анализ", {primary:true, extraDisabled: !canBuild}) +
     '</div>';
   if(!canBuild) wrap.innerHTML += '<div class="empty">Добавьте хотя бы одного конкурента, чтобы собрать анализ.</div>';
   var out = document.createElement("div");
@@ -750,6 +750,15 @@ function renderSummarySub(root){
   });
 }
 
+var AI_UNAVAILABLE_TITLE = "AI-функции доступны только когда страница открыта как Claude-артефакт (claude.ai). Здесь это действие недоступно.";
+function aiButtonHtml(attrs, label, opts){
+  opts = opts || {};
+  var cls = "btn" + (opts.sm===false ? "" : " sm") + (opts.primary ? " primary" : "");
+  if(sampleFn){
+    return '<button class="'+cls+'" '+attrs+(opts.extraDisabled?" disabled":"")+'>'+label+'</button>';
+  }
+  return '<button class="'+cls+'" '+attrs+' disabled title="'+esc(AI_UNAVAILABLE_TITLE)+'">'+label+'</button>';
+}
 function aiErrorCopy(e){
   var code = e && e.code;
   var map = {
@@ -781,18 +790,18 @@ function renderPlan(){
   var card = document.createElement("div"); card.className = "card stack";
   card.innerHTML =
     '<h2>Карточка проекта</h2>' +
-    '<div class="row">' +
+    '<div class="row fields">' +
       '<div class="field"><label>Тип проекта</label><select id="f_type"><option value="">— выберите —</option>' +
         PROJECT_TYPES.map(function(t){return '<option '+(f.type===t?"selected":"")+'>'+t+'</option>';}).join("") + '</select></div>' +
       '<div class="field"><label>Название</label><input id="f_name" value="'+esc(f.name)+'" placeholder="Например, «Таксист — Байып кет»"></div>' +
     '</div>' +
     '<div class="field"><label>Описание</label><textarea id="f_desc" rows="2" placeholder="О чём проект, в 1-2 предложениях">'+esc(f.desc)+'</textarea></div>' +
-    '<div class="row">' +
+    '<div class="row fields">' +
       '<div class="field"><label>Аудитория</label><input id="f_aud" value="'+esc(f.audience)+'" placeholder="Кто целевой зритель"></div>' +
       '<div class="field"><label>Дата запуска</label><input id="f_launch" type="date" value="'+esc(f.launch)+'"></div>' +
     '</div>' +
     '<div class="field"><label>Доступные площадки</label><div class="chips" id="platChips"></div></div>' +
-    '<div class="row">' +
+    '<div class="row fields">' +
       '<div class="field"><label>Главная задача</label><select id="f_goal"><option value="">— выберите —</option>' +
         GOALS.map(function(g){return '<option '+(f.goal===g?"selected":"")+'>'+g+'</option>';}).join("") + '</select></div>' +
       '<div class="field"><label>Бюджет</label><select id="f_budget"><option value="">— выберите —</option>' +
@@ -800,8 +809,8 @@ function renderPlan(){
     '</div>' +
     '<div class="field"><label>Уточнение задачи</label><input id="f_goalnote" value="'+esc(f.goalNote)+'" placeholder="Например: удержать зрителя до 3 серии"></div>' +
     (state.analysisSummary ? '<label style="display:flex;gap:8px;align-items:center;font-size:13.5px"><input type="checkbox" id="useAnalysis" '+(state.useAnalysisInPlan?"checked":"")+' style="width:auto"> Учитывать сравнительный анализ конкурентов (собран во вкладке «Анализ конкурентов»)</label>' : '') +
-    '<div class="row" style="margin-top:4px">' +
-      (sampleFn ? '<button class="btn primary" id="buildPlan">✦ Собрать план с Claude</button>' : '') +
+    '<div class="row" style="flex:none;margin-top:4px">' +
+      aiButtonHtml('id="buildPlan"', "✦ Собрать план с Claude", {primary:true, sm:false}) +
       '<button class="btn" id="quickPlan">⚡ Быстрый шаблон (без AI)</button>' +
     '</div>';
   root.appendChild(card);
