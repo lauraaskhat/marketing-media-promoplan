@@ -198,8 +198,7 @@ var DEFAULT_STATE = {
   trends: [],
   analysisSummary: "",
   useAnalysisInPlan: false,
-  planText: "",
-  planQuickText: ""
+  planData: null
 };
 var LSKEY = "mmedia_v1";
 var state = loadState();
@@ -249,28 +248,60 @@ function fmt1(n){ return (Math.round(n*10)/10).toString(); }
 var PLATFORMS = ["instagram","tiktok","youtube","telegram","facebook"];
 var PLATFORM_LABEL = {instagram:"Instagram", tiktok:"TikTok", youtube:"YouTube", telegram:"Telegram", facebook:"Facebook"};
 
-/* ---------- claude capabilities ---------- */
-// NB: on a host without window.claude (e.g. a plain static deploy), referencing
-// the bare `claude` global throws synchronously — guard with typeof so this
-// never throws before an `await` gets a chance to yield. Invoked from the boot
-// section at the bottom, after every var/function this awaits are defined,
-// so the re-render is always safe whether it resolves same-tick or later.
-var sampleFn = null, downloadsFn = null;
-async function initCaps(){
-  try{ sampleFn = typeof claude!=="undefined" ? await claude.use("sample") : null; }catch(e){ sampleFn = null; }
-  try{ downloadsFn = typeof claude!=="undefined" ? await claude.use("downloads") : null; }catch(e){ downloadsFn = null; }
-  renderAll(); // re-render once caps known so AI buttons reflect availability
+/* ---------- file export ---------- */
+// Works fully standalone (no Claude needed): tries the Claude `downloads`
+// capability first (present only inside a Claude Artifact view), and falls
+// back to a plain browser download otherwise — which is how every other
+// page on the web saves a file, so this always works on GitHub Pages, a
+// local file, or any regular host.
+var downloadsFn = null;
+if(typeof claude !== "undefined"){
+  claude.use("downloads").then(function(fn){ downloadsFn = fn; }).catch(function(){ downloadsFn = null; });
+}
+async function saveFile(filename, content, mime){
+  if(downloadsFn){
+    try{ await downloadsFn.save({filename:filename, data:content}); toast(T("saved")); return; }catch(e){ /* fall through */ }
+  }
+  try{
+    var blob = new Blob([content], {type:(mime||"text/plain")+";charset=utf-8"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename; a.style.display="none";
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+    toast(T("saved"));
+  }catch(e){ toast(T("saveFailed")); }
 }
 
-function langInstruction(){
-  return state.lang === "kk"
-    ? "Жауапты міндетті түрде қазақ тілінде жаз (латын әріптерін қоспа)."
-    : "Отвечай строго на русском языке.";
-}
-
-async function askClaude(prompt, opts){
-  if(!sampleFn) throw {code:"not_declared", message:"AI недоступен"};
-  return sampleFn(prompt, opts||{});
+/* ---------- bilingual output strings (RU/KK) ---------- */
+// The lang switch affects only text this app generates itself (templates,
+// section headers, curated trend ideas) — it never touches what the user
+// typed, and never touches interface button labels (per spec).
+var STRINGS = {
+  ru: {
+    saved: "Файл сохранён", saveFailed: "Не удалось сохранить файл",
+    themes: "Темы/рубрики", tone: "Тон и формат подачи", frequency: "Паттерн частоты публикаций", whitespace: "Чего не хватает (идея для отстройки)",
+    noNotes: "Сначала опишите наблюдения по этому конкуренту",
+    fillManually: "заполните вручную",
+    gapsFilled: "Пробелы заполнены по введённым данным",
+    addCompetitorsFirst: "Сначала добавьте конкурентов",
+    trendsAdded: "Добавлены идеи трендов",
+    needCompetitor: "Добавьте хотя бы одного конкурента, чтобы собрать анализ"
+  },
+  kk: {
+    saved: "Файл сақталды", saveFailed: "Файлды сақтау мүмкін болмады",
+    themes: "Тақырыптар/рубрикалар", tone: "Тон және берілу форматы", frequency: "Жариялау жиілігінің үлгісі", whitespace: "Немен толықтыру керек (идея)",
+    noNotes: "Алдымен осы бәсекелес туралы бақылауларыңызды жазыңыз",
+    fillManually: "қолмен толтырыңыз",
+    gapsFilled: "Бос жерлер енгізілген деректер бойынша толтырылды",
+    addCompetitorsFirst: "Алдымен бәсекелестерді қосыңыз",
+    trendsAdded: "Тренд идеялары қосылды",
+    needCompetitor: "Талдау жасау үшін кемінде бір бәсекелесті қосыңыз"
+  }
+};
+function T(key){
+  var d = STRINGS[state.lang] || STRINGS.ru;
+  return d[key] != null ? d[key] : (STRINGS.ru[key] || key);
 }
 
 /* ---------- render root ---------- */
@@ -384,6 +415,49 @@ function renderRegTable(){
 }
 
 /* --- Контент --- */
+// Purely local structuring: no AI, no invented facts — it only ever
+// reorganizes words already present in the user's own notes.
+var TONE_KEYWORDS = [
+  ["юмор", "юмористический"], ["смешн", "юмористический"], ["ирони", "ироничный"],
+  ["серьёзн", "серьёзный"], ["серьезн", "серьёзный"], ["официальн", "официальный"],
+  ["драм", "драматичный"], ["эмоц", "эмоциональный"], ["личн", "личный/исповедальный"],
+  ["дружелюбн", "дружелюбный"], ["провокац", "провокационный"], ["разговорн", "разговорный"],
+  ["эксперт", "экспертный"], ["развлек", "развлекательный"]
+];
+var FORMAT_KEYWORDS = [
+  ["reels", "Reels"], ["shorts", "Shorts"], ["сторис", "сторис"], ["stories", "сторис"],
+  ["карусел", "карусели"], ["лайв", "прямые эфиры"], ["стрим", "прямые эфиры"],
+  ["подкаст", "подкасты"], ["интервью", "интервью"], ["разбор", "разборы/аналитика"],
+  ["закулис", "бэкстейдж"], ["съём", "бэкстейдж со съёмок"], ["мем", "мемы"],
+  ["опрос", "опросы"], ["коллаб", "коллаборации с блогерами"], ["фото", "фотоконтент"]
+];
+function findKeywords(text, dict){
+  var t = text.toLowerCase();
+  var found = [];
+  dict.forEach(function(pair){
+    if(t.indexOf(pair[0])>=0 && found.indexOf(pair[1])<0) found.push(pair[1]);
+  });
+  return found;
+}
+function structureContentLocal(notes){
+  var sentences = notes.split(/(?<=[.!?;\n])\s+|\n/).map(function(s){return s.trim();}).filter(Boolean);
+  if(sentences.length===0) sentences = [notes.trim()];
+  var tones = findKeywords(notes, TONE_KEYWORDS);
+  var formats = findKeywords(notes, FORMAT_KEYWORDS);
+  var freqMatch = notes.match(/(\d+)\s*(раз|публикаци|reels|видео|пост)[^\d]{0,15}(неделю|день|месяц)/i);
+  var themes = sentences.slice(0, 6);
+  var missingFormats = FORMAT_KEYWORDS.map(function(p){return p[1];})
+    .filter(function(f, i, arr){ return arr.indexOf(f)===i; })
+    .filter(function(f){ return formats.indexOf(f)<0; })
+    .slice(0, 3);
+  return {
+    themes: themes,
+    tone: tones.length ? tones.join(", ") : "— не удалось определить по тексту, уточните формулировку",
+    formats: formats.length ? formats.join(", ") : "— форматы не распознаны, перечислите их явно (Reels, сторис…)",
+    frequency: freqMatch ? (freqMatch[1]+" "+freqMatch[2]+" в "+freqMatch[3]) : "— частота не указана явно в наблюдениях",
+    whitespace: missingFormats.length ? ("Похоже, конкурент не использует: " + missingFormats.join(", ") + " — можно занять эту нишу.") : "Конкурент использует широкий набор форматов — ищите отличие в тоне или регулярности."
+  };
+}
 function renderContentSub(root){
   var wrap = document.createElement("div");
   wrap.className = "stack";
@@ -398,42 +472,34 @@ function renderContentSub(root){
     card.className = "comp-card stack";
     card.innerHTML =
       '<div class="comp-head"><strong>'+ (esc(c.name)||"(без названия)") +'</strong>' +
-        aiButtonHtml('data-act="ai"', "✦ Разобрать контент с Claude") +
+        '<button class="btn sm" data-act="structure">⚙ Структурировать наблюдения</button>' +
       '</div>' +
       '<div class="field"><label>Наблюдения: что и как публикует (рубрики, тон, форматы, примеры)</label>' +
         '<textarea rows="3" placeholder="Например: 3 Reels в неделю, юмористический тон, разбор закулисья съёмок…">'+esc(rec.notes)+'</textarea></div>' +
       '<div id="aiout"></div>';
     var ta = card.querySelector("textarea");
     ta.addEventListener("input", function(){ rec.notes = ta.value; saveState(); });
-    var aiBtn = card.querySelector('[data-act="ai"]');
+    var structBtn = card.querySelector('[data-act="structure"]');
     var out = card.querySelector("#aiout");
     function renderOut(){
       out.innerHTML = "";
-      if(rec.aiThinking){
-        var d = document.createElement("div"); d.className="aiOut thinking"; d.textContent="Думаю…"; out.appendChild(d); return;
-      }
       if(rec.ai){
         var box = document.createElement("div"); box.className="aiOut";
-        box.innerHTML = '<span class="badge ai">Разбор Claude</span><div style="margin-top:8px">'+esc(rec.ai).replace(/\n/g,"<br>")+'</div>';
+        box.innerHTML = '<span class="badge user">Структура из ваших наблюдений</span>' +
+          '<div style="margin-top:8px"><strong>'+T("themes")+':</strong><ul style="margin:4px 0 10px;padding-left:18px">'+
+            rec.ai.themes.map(function(t){return '<li>'+esc(t)+'</li>';}).join("") + '</ul>' +
+          '<strong>'+T("tone")+':</strong> '+esc(rec.ai.tone)+'<br>' +
+          '<strong>Форматы:</strong> '+esc(rec.ai.formats)+'<br>' +
+          '<strong>'+T("frequency")+':</strong> '+esc(rec.ai.frequency)+'<br>' +
+          '<strong>'+T("whitespace")+':</strong> '+esc(rec.ai.whitespace)+'</div>';
         out.appendChild(box);
       }
     }
     renderOut();
-    if(aiBtn) aiBtn.addEventListener("click", async function(){
-      if(!rec.notes.trim()){ toast("Сначала опишите наблюдения по этому конкуренту"); return; }
-      rec.aiThinking = true; renderOut();
-      try{
-        var prompt = "Ты помогаешь маркетологу медиакомпании структурировать наблюдения о контенте конкурента.\n" +
-          "Конкурент: " + (c.name||"без названия") + ". Заметка: " + (c.note||"—") + ".\n" +
-          "Сырые наблюдения пользователя (единственный источник фактов, ничего не выдумывай сверх них):\n" + rec.notes + "\n\n" +
-          "Структурируй в разделы: 1) Темы/рубрики 2) Тон и формат подачи 3) Паттерн частоты публикаций 4) Чего не хватает (белое пятно/идея для отстройки нашего проекта). " +
-          "Не придумывай фактов о контенте, которых нет в наблюдениях. " + langInstruction();
-        var res = await askClaude(prompt, {modelTier:"default"});
-        rec.ai = res.text;
-      }catch(e){
-        toast(aiErrorCopy(e));
-      }
-      rec.aiThinking = false; saveState(); renderOut();
+    structBtn.addEventListener("click", function(){
+      if(!rec.notes.trim()){ toast(T("noNotes")); return; }
+      rec.ai = structureContentLocal(rec.notes);
+      saveState(); renderOut();
     });
     wrap.appendChild(card);
   });
@@ -441,11 +507,37 @@ function renderContentSub(root){
 }
 
 /* --- Продукт --- */
+// Local heuristic fill: only ever echoes/derives from the competitor's own
+// name+note (real entered data), never invents facts about them.
+var PRODUCT_FORMAT_HINTS = [
+  ["ютуб", "YouTube-контент"], ["youtube", "YouTube-контент"], ["тв", "Телевидение"],
+  ["телекана", "Телевидение"], ["сериал", "Сериал"], ["подкаст", "Подкаст"],
+  ["tiktok", "TikTok"], ["инстаграм", "Instagram"], ["instagram", "Instagram"],
+  ["документал", "Документальный проект"], ["фильм", "Фильм"]
+];
+var PRODUCT_AUDIENCE_HINTS = [
+  ["молод", "молодая аудитория"], ["семейн", "семейная аудитория"], ["взросл", "взрослая аудитория"],
+  ["подростк", "подростковая аудитория"], ["детск", "детская аудитория"], ["массов", "массовая аудитория"]
+];
+function fillProductGapsLocal(name, note){
+  var text = (name+" "+note).toLowerCase();
+  function pick(hints, fallback){
+    for(var i=0;i<hints.length;i++){ if(text.indexOf(hints[i][0])>=0) return hints[i][1]; }
+    return fallback;
+  }
+  return {
+    positioning: note ? ("По заметке: «"+note+"»") : ("— "+T("fillManually")),
+    usp: note || ("— "+T("fillManually")),
+    format: pick(PRODUCT_FORMAT_HINTS, "— не определено, "+T("fillManually")),
+    audience: pick(PRODUCT_AUDIENCE_HINTS, "— не определено, "+T("fillManually")),
+    weak: "Сравните с данными в срезах «Соцсети» и «Контент» ниже, чтобы найти слабое место."
+  };
+}
 function renderProductSub(root){
   var wrap = document.createElement("div"); wrap.className="stack";
   var top = document.createElement("div");
   top.className = "section-title";
-  top.innerHTML = '<h3>Сравнение по продукту</h3>' + aiButtonHtml('id="fillGaps"', "✦ Заполнить пробелы с Claude");
+  top.innerHTML = '<h3>Сравнение по продукту</h3><button class="btn sm" id="fillGaps">⚙ Заполнить пробелы по заметкам</button>';
   wrap.appendChild(top);
 
   var cols = [["positioning","Позиционирование"],["usp","УТП"],["format","Формат/продукт"],["audience","Аудитория"],["weak","Слабое место"]];
@@ -470,30 +562,21 @@ function renderProductSub(root){
   });
   wrap.appendChild(tw);
   if(state.reg.length===0) wrap.appendChild(Object.assign(document.createElement("div"), {className:"empty", textContent:"Добавьте конкурентов в реестр, чтобы сравнить продукт."}));
-  wrap.appendChild(Object.assign(document.createElement("div"), {className:"hint", textContent:"Гипотезы Claude помечаются отдельно и не заменяют введённые вами данные."}));
+  wrap.appendChild(Object.assign(document.createElement("div"), {className:"hint", textContent:"Автозаполнение выводит текст только из названия и заметки конкурента — не факты, а подсказка для ручной проверки."}));
   root.appendChild(wrap);
 
   var fillBtn = document.getElementById("fillGaps");
-  if(fillBtn) fillBtn.addEventListener("click", async function(){
-    if(state.reg.length===0){ toast("Сначала добавьте конкурентов"); return; }
-    fillBtn.disabled = true; fillBtn.textContent = "Думаю…";
-    try{
-      var payload = state.reg.map(function(r){ return {id:r.id, name:r.name, note:r.note}; });
-      var prompt = "Для медиапроекта заполни ПРОБЕЛЫ в сравнительной таблице по продукту для следующих конкурентов (только по названию и заметке — это гипотезы, а не факты):\n" +
-        JSON.stringify(payload) + "\n" +
-        "Верни JSON-массив объектов вида {id, positioning, usp, format, audience, weak} — короткие фразы (до 12 слов), по-русски одной темой на поле. " + langInstruction() +
-        " Ответь только JSON-массивом.";
-      var res = await sampleFn.json(prompt, {modelTier:"default"});
-      (Array.isArray(res)?res:[]).forEach(function(item){
-        var rec = state.product[item.id]; if(!rec) return;
-        cols.forEach(function(c){
-          if(!rec[c[0]] && item[c[0]]) rec[c[0]] = String(item[c[0]]);
-        });
+  fillBtn.addEventListener("click", function(){
+    if(state.reg.length===0){ toast(T("addCompetitorsFirst")); return; }
+    state.reg.forEach(function(r){
+      var rec = state.product[r.id]; if(!rec) return;
+      var gaps = fillProductGapsLocal(r.name, r.note);
+      cols.forEach(function(c){
+        if(!rec[c[0]] && gaps[c[0]]) rec[c[0]] = gaps[c[0]];
       });
-      saveState(); renderAnalysis();
-      toast("Пробелы заполнены — гипотезы Claude");
-    }catch(e){ toast(aiErrorCopy(e)); }
-    fillBtn.disabled = false;
+    });
+    saveState(); renderAnalysis();
+    toast(T("gapsFilled"));
   });
 }
 
@@ -642,24 +725,58 @@ function renderSocialSub(root){
         .concat([fmt1(computeER(r)), fmt1(computeReach(r))]).join(";");
     });
     var csv = "﻿" + header + "\n" + lines.join("\n");
-    if(downloadsFn){
-      try{
-        await downloadsFn.save({filename: plat+"_sravnenie.csv", data: csv});
-        toast("Файл сохранён");
-      }catch(e){ toast("Не удалось сохранить файл"); }
-    } else {
-      toast("Скачивание недоступно в этом окне");
-    }
+    saveFile(plat+"_sravnenie.csv", csv, "text/csv");
   });
 }
 
 /* --- Тренды --- */
+// A curated, hand-written bank of generic short-video/media-promo trend
+// formats (not live data — that's exactly why the app also points to
+// «Источники данных» for real, current trend research).
+var TREND_BANK = {
+  ru: [
+    {title:"Реакция героя на комментарии", desc:"Герой проекта читает и комментирует реакции зрителей — живой, узнаваемый формат для Reels/Shorts."},
+    {title:"До/после за 15 секунд", desc:"Контраст «было — стало»: как менялся проект, герой или процесс съёмок."},
+    {title:"3 секунды правды", desc:"Молниеносный тизер с самым неожиданным кадром — хук в первом кадре, без разгона."},
+    {title:"Закулисье монтажа", desc:"Короткий взгляд на монтажную/съёмочную кухню — форматы «как это снято»."},
+    {title:"Вопрос без ответа", desc:"Ролик заканчивается открытым вопросом, ответ — в следующей серии/публикации."},
+    {title:"Дуэт/стич с аудиторией", desc:"Реакция на пользовательский контент по теме проекта (актуально для TikTok)."},
+    {title:"Один кадр — тысяча слов", desc:"Статичный, но выразительный визуальный тизер с текстовой подводкой."},
+    {title:"Числа и факты", desc:"Инфографика-карусель с цифрами о проекте (бюджет, съёмочные дни, локации)."},
+    {title:"Голос за кадром героя", desc:"Личный, неформальный монолог героя/актёра как подводка к премьере."},
+    {title:"Челлендж по мотивам", desc:"Простое повторяемое действие/фраза из проекта, которое легко подхватить."},
+    {title:"Плейлист настроения", desc:"Подборка музыки/атмосферы проекта — вовлекает через звук, а не только видео."},
+    {title:"Разбор одной сцены", desc:"Детальный разбор ключевого момента с точки зрения продюсера/режиссёра."},
+    {title:"Письмо зрителю", desc:"Текстовый пост-обращение к аудитории — личный тон, без продакшна."},
+    {title:"Прогноз от подписчиков", desc:"Опрос: как, по мнению аудитории, закончится сюжетная линия."},
+    {title:"Мини-подкаст в сторис", desc:"Голосовая заметка/аудио-отрывок обсуждения проекта в формате сторис."},
+    {title:"Сравнение с оригиналом", desc:"Если проект основан на реальных событиях/книге — сравнение с первоисточником."}
+  ],
+  kk: [
+    {title:"Кейіпкердің пікірлерге жауабы", desc:"Жоба кейіпкері көрермендердің пікірлерін оқып, түсінік береді — Reels/Shorts үшін тірі формат."},
+    {title:"15 секундтағы «дейін/кейін»", desc:"Жобаның, кейіпкердің немесе түсіру процесінің қалай өзгергенін көрсету."},
+    {title:"3 секундтық шындық", desc:"Ең күтпеген кадрмен басталатын жылдам тизер — бірінші кадрдан бастап қызықтырады."},
+    {title:"Монтаждың сыртқы көрінісі", desc:"Түсіру/монтаж үрдісіне қысқа шолу — «бұл қалай түсірілді» форматы."},
+    {title:"Жауапсыз сұрақ", desc:"Бейне ашық сұрақпен аяқталады, жауабы келесі бөлімде/жарияда."},
+    {title:"Аудиториямен дуэт", desc:"Жоба тақырыбы бойынша пайдаланушы контентіне жауап (TikTok үшін өзекті)."},
+    {title:"Бір кадр — мың сөз", desc:"Мәтінмен қатар берілетін мәнерлі статикалық тизер."},
+    {title:"Сандар мен фактілер", desc:"Жоба туралы сандары бар инфографика-карусель (бюджет, түсіру күндері, локациялар)."},
+    {title:"Кейіпкердің дауысы", desc:"Премьераға дайындық ретінде кейіпкердің жеке, бейресми монологы."},
+    {title:"Жоба бойынша челлендж", desc:"Оңай қайталанатын әрекет/фраза — аудитория тез қабылдайды."},
+    {title:"Көңіл-күй ойнату тізімі", desc:"Жобаның музыкасы/атмосферасы — дыбыс арқылы қызықтырады."},
+    {title:"Бір көріністі талдау", desc:"Продюсер/режиссёр көзқарасымен негізгі сәтті терең талдау."},
+    {title:"Көрерменге хат", desc:"Аудиторияға арналған мәтіндік үндеу — жеке тон, продакшнсыз."},
+    {title:"Жазылушылардың болжамы", desc:"Сюжет қалай аяқталады деген сауалнама."},
+    {title:"Стористегі мини-подкаст", desc:"Жобаны талқылаудың дауыстық үзіндісі сторис форматында."},
+    {title:"Түпнұсқамен салыстыру", desc:"Жоба нақты оқиғаларға/кітапқа негізделсе — түпнұсқамен салыстыру."}
+  ]
+};
 function renderTrendsSub(root){
   var wrap = document.createElement("div"); wrap.className="stack";
   var head = document.createElement("div"); head.className="section-title";
   head.innerHTML = '<h3>Тренды и форматы</h3><div class="row" style="flex:none;gap:8px">' +
     '<button class="btn sm" id="addTrend">+ Добавить вручную</button>' +
-    aiButtonHtml('id="aiTrends"', "✦ Предложить тренды с Claude", {primary:true}) +
+    '<button class="btn sm primary" id="aiTrends">⚡ Предложить идеи форматов</button>' +
     '</div>';
   wrap.appendChild(head);
 
@@ -668,7 +785,7 @@ function renderTrendsSub(root){
     var card = document.createElement("div");
     card.className = "trend-card" + (t.source==="ai" ? " ai" : "");
     card.innerHTML =
-      '<span class="badge '+(t.source==="ai"?"ai":"user")+'">'+(t.source==="ai"?"Гипотеза Claude":"Добавлено вручную")+'</span>' +
+      '<span class="badge '+(t.source==="ai"?"ai":"user")+'">'+(t.source==="ai"?"Шаблон-идея":"Добавлено вручную")+'</span>' +
       '<input data-f="title" value="'+esc(t.title)+'" placeholder="Название тренда" style="font-weight:700">' +
       '<textarea data-f="desc" rows="2" placeholder="Описание">'+esc(t.desc)+'</textarea>' +
       '<input data-f="link" value="'+esc(t.link)+'" placeholder="Ссылка на источник (необязательно)">' +
@@ -682,72 +799,126 @@ function renderTrendsSub(root){
     grid.appendChild(card);
   });
   wrap.appendChild(grid);
-  if(state.trends.length===0) wrap.appendChild(Object.assign(document.createElement("div"),{className:"empty",textContent:"Пока нет трендов. Добавьте вручную или запросите гипотезы у Claude."}));
+  if(state.trends.length===0) wrap.appendChild(Object.assign(document.createElement("div"),{className:"empty",textContent:"Пока нет трендов. Добавьте вручную или нажмите «Предложить идеи форматов»."}));
   root.appendChild(wrap);
 
   document.getElementById("addTrend").addEventListener("click", function(){
     state.trends.push({id:uid(), title:"", desc:"", link:"", source:"user"});
     saveState(); renderAnalysis();
   });
-  var aiBtn = document.getElementById("aiTrends");
-  if(aiBtn) aiBtn.addEventListener("click", async function(){
-    aiBtn.disabled = true; aiBtn.textContent = "Думаю…";
-    try{
-      var ctx = "Тип проекта: " + (state.form.type||"—") + ". Название: " + (state.form.name||"—") +
-        ". Площадки: " + (state.form.platforms||[]).join(", ") + ". Аудитория: " + (state.form.audience||"—") + ".";
-      var prompt = "Ты — консультант по SMM для медиапроекта (сериал/ТВ/документалка). " + ctx +
-        " Предложи 5 гипотез актуальных трендов/форматов коротких видео под этот проект и площадки. " +
-        "У тебя нет доступа к живым данным — явно обозначь в описании каждого тренда одной фразой, что это гипотеза без доступа к live-данным и её нужно проверить через источники. " +
-        "Верни JSON-массив из 5 объектов {title, desc}, title короткий (до 8 слов). " + langInstruction() + " Ответь только JSON.";
-      var res = await sampleFn.json(prompt, {modelTier:"default"});
-      (Array.isArray(res)?res:[]).forEach(function(item){
-        state.trends.push({id:uid(), title:String(item.title||""), desc:String(item.desc||""), link:"", source:"ai"});
-      });
-      saveState(); renderAnalysis();
-    }catch(e){ toast(aiErrorCopy(e)); }
+  document.getElementById("aiTrends").addEventListener("click", function(){
+    var bank = TREND_BANK[state.lang] || TREND_BANK.ru;
+    var existingTitles = state.trends.map(function(t){return t.title;});
+    var pool = bank.filter(function(idea){ return existingTitles.indexOf(idea.title)<0; });
+    if(pool.length===0) pool = bank.slice();
+    var picked = pool.slice().sort(function(){return Math.random()-0.5;}).slice(0,5);
+    picked.forEach(function(idea){
+      state.trends.push({id:uid(), title:idea.title, desc:idea.desc, link:"", source:"ai"});
+    });
+    saveState(); renderAnalysis();
+    toast(T("trendsAdded"));
   });
 }
 
 /* --- Итог --- */
+// A rules-based aggregate report: every line is computed straight from data
+// already entered elsewhere in the app (competitor notes, product table,
+// social matrix ER/reach, trends) — no invented facts, no external calls.
+function buildSummaryLocal(){
+  var lines = [];
+  var name = state.form.name || "наш проект";
+  lines.push("ОБЩИЙ ВЫВОД");
+  lines.push("Проект «"+name+"» сравнивается с "+state.reg.length+" "+(state.reg.length===1?"конкурентом":"конкурентами")+": "+
+    state.reg.map(function(r){return r.name||"(без названия)";}).join(", ")+".");
+  lines.push("");
+
+  lines.push("ПРОДУКТ");
+  var prodMe = state.product["__me"] || {};
+  var filledMe = ["positioning","usp","format","audience","weak"].filter(function(k){return prodMe[k];}).length;
+  lines.push("Заполнено полей по своему проекту: "+filledMe+"/5.");
+  state.reg.forEach(function(r){
+    var p = state.product[r.id] || {};
+    var filled = ["positioning","usp","format","audience","weak"].filter(function(k){return p[k];}).length;
+    lines.push("— "+(r.name||"(без названия)")+": заполнено "+filled+"/5"+(p.weak?"; слабое место: "+p.weak:"")+".");
+  });
+  lines.push("");
+
+  lines.push("КОНТЕНТ");
+  var anyContent = false;
+  state.reg.forEach(function(r){
+    var c = state.content[r.id];
+    if(c && c.ai){
+      anyContent = true;
+      lines.push("— "+(r.name||"(без названия)")+": тон — "+c.ai.tone+"; форматы — "+c.ai.formats+".");
+    } else if(c && c.notes){
+      anyContent = true;
+      lines.push("— "+(r.name||"(без названия)")+": наблюдения внесены, но не структурированы (нажмите «Структурировать» во вкладке «Контент»).");
+    }
+  });
+  if(!anyContent) lines.push("Наблюдения по контенту конкурентов пока не внесены.");
+  lines.push("");
+
+  lines.push("СОЦСЕТИ");
+  var anySocial = false;
+  var bestPlatform = null, bestDiff = -Infinity;
+  PLATFORMS.forEach(function(plat){
+    var rows = state.mx[plat];
+    if(!rows || rows.length<2) return;
+    anySocial = true;
+    var me = rows[0], competitors = rows.slice(1);
+    var myER = computeER(me);
+    var compER = competitors.map(computeER);
+    var med = median(compER);
+    var diff = med>0 ? ((myER-med)/med*100) : (myER>0?100:0);
+    lines.push("— "+PLATFORM_LABEL[plat]+": ER моего проекта "+fmt1(myER)+"%, медиана конкурентов "+fmt1(med)+"% ("+(diff>=0?"выше":"ниже")+" на "+fmt1(Math.abs(diff))+"%).");
+    if(diff>bestDiff){ bestDiff=diff; bestPlatform=plat; }
+  });
+  if(!anySocial) lines.push("Недостаточно данных — заполните минимум 2 строки (свой проект + конкурент) хотя бы на одной площадке во вкладке «Соцсети».");
+  lines.push("");
+
+  lines.push("ТРЕНДЫ К ИСПОЛЬЗОВАНИЮ");
+  if(state.trends.length){
+    state.trends.slice(0,5).forEach(function(t){ lines.push("— "+(t.title||"без названия")+(t.desc?": "+t.desc:"")); });
+  } else {
+    lines.push("Тренды пока не добавлены — откройте вкладку «Тренды».");
+  }
+  lines.push("");
+
+  lines.push("РЕКОМЕНДАЦИИ ДЛЯ ПРОМОПЛАНА");
+  var recs = [];
+  if(bestPlatform) recs.push("Сделайте ставку на "+PLATFORM_LABEL[bestPlatform]+" — там ваш отрыв от конкурентов больше всего ("+fmt1(bestDiff)+"%).");
+  var noProductGaps = state.reg.filter(function(r){ var p=state.product[r.id]||{}; return !p.weak; });
+  if(noProductGaps.length) recs.push("Заполните «Слабое место» для: "+noProductGaps.map(function(r){return r.name||"конкурент";}).join(", ")+" — это подскажет вашу отстройку.");
+  if(!anyContent) recs.push("Опишите наблюдения по контенту конкурентов — без этого сравнение неполное.");
+  if(state.trends.length===0) recs.push("Добавьте хотя бы 2-3 тренда/формата — они станут основой идей для Reels/Shorts.");
+  if(!anySocial) recs.push("Внесите цифры хотя бы по одной социальной площадке для количественного сравнения.");
+  recs.push("Используйте кнопку «Использовать в промоплане» ниже, чтобы учесть этот отчёт при сборке плана.");
+  recs.forEach(function(r, i){ lines.push((i+1)+". "+r); });
+
+  return lines.join("\n");
+}
 function renderSummarySub(root){
   var wrap = document.createElement("div"); wrap.className="stack card";
   var canBuild = state.reg.length>0;
   wrap.innerHTML =
     '<div class="section-title"><h3>Консолидированный отчёт</h3>' +
-      aiButtonHtml('id="buildSummary"', "✦ Собрать сравнительный анализ", {primary:true, extraDisabled: !canBuild}) +
+      '<button class="btn primary sm" id="buildSummary" '+(canBuild?"":"disabled")+'>📊 Собрать сравнительный анализ</button>' +
     '</div>';
-  if(!canBuild) wrap.innerHTML += '<div class="empty">Добавьте хотя бы одного конкурента, чтобы собрать анализ.</div>';
+  if(!canBuild) wrap.innerHTML += '<div class="empty">'+T("needCompetitor")+'.</div>';
   var out = document.createElement("div");
-  if(state.summaryThinking){ out.innerHTML = '<div class="aiOut thinking">Собираю анализ по всем срезам…</div>'; }
-  else if(state.analysisSummary){
+  if(state.analysisSummary){
     out.innerHTML = '<div class="aiOut">'+esc(state.analysisSummary).replace(/\n/g,"<br>")+'</div>' +
       '<div class="row" style="margin-top:10px"><button class="btn primary sm" id="useInPlan">Использовать в промоплане →</button></div>';
   } else {
-    out.innerHTML = '<div class="hint">Отчёт объединит данные срезов «Продукт», «Контент», «Соцсети», «Тренды» в один вывод: общая оценка, незанятые ниши и 5 рекомендаций для промоплана.</div>';
+    out.innerHTML = '<div class="hint">Отчёт объединит данные срезов «Продукт», «Контент», «Соцсети», «Тренды» в один вывод: общая оценка, реальные цифры ER/охвата, незанятые ниши и рекомендации для промоплана — всё посчитано из введённых вами данных.</div>';
   }
   wrap.appendChild(out);
   root.appendChild(wrap);
 
   var btn = document.getElementById("buildSummary");
-  if(btn) btn.addEventListener("click", async function(){
-    state.summaryThinking = true; renderAnalysis();
-    try{
-      var data = {
-        myProject: state.form,
-        competitors: state.reg,
-        product: state.product,
-        content: Object.keys(state.content).reduce(function(acc,k){ acc[k] = {notes: state.content[k].notes, ai: state.content[k].ai}; return acc; }, {}),
-        socials: state.mx,
-        trends: state.trends
-      };
-      var prompt = "Ты — маркетинговый аналитик медиаагентства. На основе данных ниже собери СВЯЗНЫЙ сравнительный отчёт о конкурентах для проекта «"+(state.form.name||"наш проект")+"».\n" +
-        "Данные (JSON, могут быть неполными — работай с тем, что есть):\n" + JSON.stringify(data).slice(0,50000) + "\n\n" +
-        "Структура ответа:\n1) Общий вывод (3-5 предложений)\n2) Сравнение по продукту\n3) Сравнение по контенту\n4) Сравнение по соцсетям (используй посчитанные ER/охват, если есть)\n5) Тренды к использованию\n6) Незанятые ниши\n7) 5 рекомендаций для промоплана\n" +
-        "Пиши по-деловому, без выдумывания цифр, которых нет в данных; если данных мало — так и скажи. " + langInstruction();
-      var res = await askClaude(prompt, {modelTier:"default"});
-      state.analysisSummary = res.text;
-    }catch(e){ toast(aiErrorCopy(e)); }
-    state.summaryThinking = false; saveState(); renderAnalysis();
+  if(btn) btn.addEventListener("click", function(){
+    state.analysisSummary = buildSummaryLocal();
+    saveState(); renderAnalysis();
   });
   var useBtn = document.getElementById("useInPlan");
   if(useBtn) useBtn.addEventListener("click", function(){
@@ -755,31 +926,6 @@ function renderSummarySub(root){
     goToTab("plan");
     toast("Анализ передан в промоплан");
   });
-}
-
-var AI_UNAVAILABLE_TITLE = "AI-функции доступны только когда страница открыта как Claude-артефакт (claude.ai). Здесь это действие недоступно.";
-function aiButtonHtml(attrs, label, opts){
-  opts = opts || {};
-  var cls = "btn" + (opts.sm===false ? "" : " sm") + (opts.primary ? " primary" : "");
-  if(sampleFn){
-    return '<button class="'+cls+'" '+attrs+(opts.extraDisabled?" disabled":"")+'>'+label+'</button>';
-  }
-  return '<button class="'+cls+'" '+attrs+' disabled title="'+esc(AI_UNAVAILABLE_TITLE)+'">'+label+'</button>';
-}
-function aiErrorCopy(e){
-  var code = e && e.code;
-  var map = {
-    not_granted: "Использование Claude не разрешено для этой страницы.",
-    sampling_disabled: "Claude недоступен для этого аккаунта.",
-    not_declared: "AI-функции сейчас недоступны в этом окне.",
-    rate_limited: "Слишком много запросов — попробуйте чуть позже.",
-    prompt_too_large: "Слишком много данных для запроса — сократите текст.",
-    invalid_json: "Не удалось разобрать ответ — попробуйте ещё раз.",
-    refused: "Claude отклонил этот запрос.",
-    empty_completion: "Пустой ответ — попробуйте переформулировать.",
-    cancelled: "Запрос отменён."
-  };
-  return map[code] || "Не получилось получить ответ от Claude.";
 }
 
 /* =========================================================
@@ -817,14 +963,12 @@ function renderPlan(){
     '<div class="field"><label>Уточнение задачи</label><input id="f_goalnote" value="'+esc(f.goalNote)+'" placeholder="Например: удержать зрителя до 3 серии"></div>' +
     (state.analysisSummary ? '<label style="display:flex;gap:8px;align-items:center;font-size:13.5px"><input type="checkbox" id="useAnalysis" '+(state.useAnalysisInPlan?"checked":"")+' style="width:auto"> Учитывать сравнительный анализ конкурентов (собран во вкладке «Анализ конкурентов»)</label>' : '') +
     '<div class="row" style="flex:none;margin-top:4px">' +
-      aiButtonHtml('id="buildPlan"', "✦ Собрать план с Claude", {primary:true, sm:false}) +
-      '<button class="btn" id="quickPlan">⚡ Быстрый шаблон (без AI)</button>' +
+      '<button class="btn primary" id="quickPlan">⚡ Собрать промоплан</button>' +
     '</div>';
   root.appendChild(card);
 
   // platform chips
   var chipsWrap = card.querySelector("#platChips");
-  PLATFORMS.concat(["podcast_platforms"]).forEach(function(){}); // noop guard
   var allPlats = ["Instagram","TikTok","YouTube","Telegram","Facebook","VK"];
   allPlats.forEach(function(p){
     var chip = document.createElement("button");
@@ -850,36 +994,8 @@ function renderPlan(){
   if(chk) chk.addEventListener("change", function(){ state.useAnalysisInPlan = chk.checked; saveState(); });
 
   document.getElementById("quickPlan").addEventListener("click", function(){
-    state.planQuickText = buildQuickTemplate();
-    state.planText = "";
+    state.planData = buildQuickTemplate();
     saveState(); renderPlanOutput();
-  });
-  var buildBtn = document.getElementById("buildPlan");
-  if(buildBtn) buildBtn.addEventListener("click", async function(){
-    buildBtn.disabled = true; buildBtn.textContent = "Собираю…";
-    try{
-      var ctx = "Тип: "+(f.type||"—")+". Название: "+(f.name||"—")+". Описание: "+(f.desc||"—")+
-        ". Аудитория: "+(f.audience||"—")+". Дата запуска: "+(f.launch||"не указана")+
-        ". Площадки: "+(f.platforms.join(", ")||"не указаны")+". Задача: "+(f.goal||"—")+" ("+(f.goalNote||"")+")"+
-        ". Бюджет: "+(f.budget||"—")+".";
-      var analysisPart = (state.useAnalysisInPlan && state.analysisSummary) ? ("\n\nУчти этот сравнительный анализ конкурентов:\n"+state.analysisSummary.slice(0,8000)) : "";
-      var prompt = "Ты — маркетолог медиаагентства, составляешь черновик промоплана продвижения на одну страницу.\nПроект: " + ctx + analysisPart +
-        "\n\nВерни JSON-объект строго такой формы:\n" +
-        '{"message": "посыл кампании", "slogan": "слоган", "positioning": "позиционирование в 1-2 предложения", ' +
-        '"rubrics": ["контент-рубрика 1", "..."], ' +
-        '"reels": [{"hook":"хук на первые 3 секунды","platform":"площадка","timing":"T-7","desc":"о чём ролик"}, ... 6 штук], ' +
-        '"stages": [{"t":"T-30","action":"что делаем"}, ... 5-6 этапов от T-30 до T+30], ' +
-        '"metrics": [{"name":"метрика","target":"ориентир"}, ... 5-7 штук], ' +
-        '"risks": ["риск 1", "..."], ' +
-        '"checklist": ["действие на этой неделе", "..."]}\n' +
-        "Не выдумывай точных цифр статистики — метрики давай как реалистичные ориентиры/цели, а не факты. " + langInstruction() + " Ответь только JSON.";
-      var res = await sampleFn.json(prompt, {modelTier:"complex"});
-      state.planData = res;
-      state.planQuickText = "";
-      saveState();
-      renderPlanOutput();
-    }catch(e){ toast(aiErrorCopy(e)); }
-    buildBtn.disabled = false; buildBtn.textContent = "✦ Собрать план с Claude";
   });
 
   renderPlanOutput();
@@ -900,49 +1016,79 @@ function countdownText(){
   return "T-0 — день запуска";
 }
 
+var PLAN_BANK = {
+  ru: {
+    sloganBase: "Смотри первым.",
+    rubrics: ["Тизеры и анонсы", "Закулисье / бэкстейдж", "Реакции и цитаты героев/аудитории", "Разбор ключевых моментов"],
+    hooks: ["Самый неожиданный момент за 3 секунды", "Вопрос, на который ответит серия", "Цитата, которая цепляет", "До/после — контраст", "Личное признание героя", "Провокационный тизер"],
+    hookLabel: "Хук",
+    stages: [
+      ["T-30","сформировать контент-план и рубрики"],
+      ["T-14","тизеры на всех площадках"],
+      ["T-7","анонс даты и активация блогеров"],
+      ["T0","премьерный пост + сторис-эстафета"],
+      ["T+7","разбор реакций, усиление удачных форматов"],
+      ["T+30","итоговый отчёт и вывод на устойчивый темп публикаций"]
+    ],
+    metrics: [["Охват первой недели","ориентир"],["ER на ключевых постах","ориентир"],["Прирост подписчиков","ориентир"],["Досмотры видео","ориентир"],["Упоминания/UGC","ориентир"]],
+    risks: ["Перегрузка команды в период T-7..T0", "Недостаточно бюджета на посев", "Несовпадение тона рубрик с ожиданиями аудитории"],
+    checklist: ["Утвердить рубрики", "Снять 2 тизера", "Согласовать дату премьеры", "Выбрать 2-3 блогеров для активации"],
+    messageTpl: function(name){ return "«"+name+"» — новый повод зрителю включить именно это."; },
+    positioningTpl: function(type, aud, goal){ return type+" для аудитории «"+aud+"», фокус на задаче «"+goal+"»."; },
+    fromAnalysisRisk: "Учтите рекомендации из собранного сравнительного анализа конкурентов (вкладка «Итог»).",
+    widerAudience: "широкая аудитория", defaultType: "медиапроект", defaultGoal: "Охват"
+  },
+  kk: {
+    sloganBase: "Бірінші болып көр.",
+    rubrics: ["Тизерлер мен хабарландырулар", "Кулиса артындағы көріністер", "Кейіпкерлер/аудитория пікірлері мен дәйексөздері", "Негізгі сәттерді талдау"],
+    hooks: ["3 секундтағы ең күтпеген сәт", "Бөлім жауап беретін сұрақ", "Есте қаларлық дәйексөз", "Дейін/кейін — қарама-қайшылық", "Кейіпкердің жеке мойындауы", "Провокациялық тизер"],
+    hookLabel: "Ілмек",
+    stages: [
+      ["T-30","контент-жоспар мен рубрикаларды қалыптастыру"],
+      ["T-14","барлық платформаларда тизерлер"],
+      ["T-7","күнді жариялау және блогерлерді іске қосу"],
+      ["T0","премьералық жазба + сторис-эстафета"],
+      ["T+7","реакцияларды талдау, сәтті форматтарды күшейту"],
+      ["T+30","қорытынды есеп және тұрақты жариялау қарқынына көшу"]
+    ],
+    metrics: [["Бірінші апта қамтуы","бағдар"],["Негізгі жазбалардағы ER","бағдар"],["Жазылушылар өсімі","бағдар"],["Видео қаралу ұзақтығы","бағдар"],["Айтылымдар/UGC","бағдар"]],
+    risks: ["T-7..T0 кезеңінде команданың шамадан тыс жүктелуі", "Жылжыту бюджетінің жеткіліксіздігі", "Рубрика тонының аудитория күтуімен сәйкес келмеуі"],
+    checklist: ["Рубрикаларды бекіту", "2 тизер түсіру", "Премьера күнін келісу", "Іске қосу үшін 2-3 блогер таңдау"],
+    messageTpl: function(name){ return "«"+name+"» — көрерменге дәл қазір қосуға жаңа себеп."; },
+    positioningTpl: function(type, aud, goal){ return type+", аудиториясы — «"+aud+"», басты міндеті — «"+goal+"»."; },
+    fromAnalysisRisk: "Бәсекелестерге жасалған салыстырмалы талдаудың ұсыныстарын ескеріңіз («Қорытынды» бөлімі).",
+    widerAudience: "кең аудитория", defaultType: "медиажоба", defaultGoal: "Қамту"
+  }
+};
+var PLAN_LABELS = {
+  ru: { message:"Посыл и позиционирование", positioning:"Позиционирование", rubrics:"Контент-рубрики", reels:"Идеи Reels / Shorts", schedule:"График",
+        metrics:"Метрики", risks:"Риски", checklist:"Чек-лист на эту неделю", slogan:"Слоган", launchUnset:"дата запуска не указана", badge:"Шаблон" },
+  kk: { message:"Хабарлама және позициялау", positioning:"Позициялау", rubrics:"Контент-рубрикалар", reels:"Reels / Shorts идеялары", schedule:"Кесте",
+        metrics:"Метрикалар", risks:"Тәуекелдер", checklist:"Осы аптаға арналған чек-лист", slogan:"Ұран", launchUnset:"шығу күні көрсетілмеген", badge:"Шаблон" }
+};
 function buildQuickTemplate(){
   var f = state.form;
-  var type = f.type || "медиапроект";
-  var name = f.name || "проект";
-  var goal = f.goal || "Охват";
+  var bank = PLAN_BANK[state.lang] || PLAN_BANK.ru;
+  var type = f.type || bank.defaultType;
+  var name = f.name || (state.lang==="kk" ? "жоба" : "проект");
+  var goal = f.goal || bank.defaultGoal;
   var plats = f.platforms.length ? f.platforms : ["Instagram","YouTube"];
-  var lines = [];
-  lines.push("ПОСЫЛ: «"+name+"» — новый повод зрителю включить именно это.");
-  lines.push("СЛОГАН: Смотри первым.");
-  lines.push("ПОЗИЦИОНИРОВАНИЕ: "+type+" для аудитории «"+(f.audience||"широкая аудитория")+"», фокус на задаче «"+goal+"».");
-  lines.push("");
-  lines.push("КОНТЕНТ-РУБРИКИ:");
-  lines.push("— Тизеры и анонсы");
-  lines.push("— Закулисье / бэкстейдж");
-  lines.push("— Реакции и цитаты героев/аудитории");
-  lines.push("— Разбор ключевых моментов");
-  lines.push("");
-  lines.push("ИДЕИ REELS/SHORTS:");
-  var hooks = ["Самый неожиданный момент за 3 секунды", "Вопрос, на который ответит серия", "Цитата, которая цепляет", "До/после — контраст", "Личное признание героя", "Провокационный тизер"];
-  for(var i=0;i<6;i++){
-    var t = i<2 ? "T-14" : i<4 ? "T-3" : "T+"+(i-3);
-    lines.push((i+1)+". ["+plats[i%plats.length]+", "+t+"] Хук: "+hooks[i]);
-  }
-  lines.push("");
-  lines.push("ГРАФИК:");
-  lines.push("T-30: сформировать контент-план и рубрики");
-  lines.push("T-14: тизеры на всех площадках");
-  lines.push("T-7: анонс даты и активация блогеров");
-  lines.push("T0: премьерный пост + сторис-эстафета");
-  lines.push("T+7: разбор реакций, усиление удачных форматов");
-  lines.push("T+30: итоговый отчёт и вывод на устойчивый темп публикаций");
-  lines.push("");
-  lines.push("МЕТРИКИ (ориентиры, не факты):");
-  lines.push("— Охват первой недели");
-  lines.push("— ER на ключевых постах");
-  lines.push("— Прирост подписчиков");
-  lines.push("— Досмотры видео");
-  lines.push("— Упоминания/UGC");
-  lines.push("");
-  lines.push("РИСКИ: перегрузка команды в T-7..T0; недостаточно бюджета на посев; несовпадение тона рубрик с ожиданиями аудитории.");
-  lines.push("");
-  lines.push("ЧЕК-ЛИСТ НА ЭТУ НЕДЕЛЮ: утвердить рубрики → снять 2 тизера → согласовать дату премьеры → выбрать 2-3 блогеров для активации.");
-  return lines.join("\n");
+  var risks = bank.risks.slice();
+  if(state.useAnalysisInPlan && state.analysisSummary) risks.push(bank.fromAnalysisRisk);
+  return {
+    message: bank.messageTpl(name),
+    slogan: bank.sloganBase,
+    positioning: bank.positioningTpl(type, f.audience||bank.widerAudience, goal),
+    rubrics: bank.rubrics,
+    reels: bank.hooks.map(function(h, i){
+      var t = i<2 ? "T-14" : i<4 ? "T-3" : "T+"+(i-3);
+      return {hook: bank.hookLabel+": "+h, platform: plats[i%plats.length], timing: t, desc:""};
+    }),
+    stages: bank.stages.map(function(s){ return {t:s[0], action:s[1]}; }),
+    metrics: bank.metrics.map(function(m){ return {name:m[0], target:m[1]}; }),
+    risks: risks,
+    checklist: bank.checklist
+  };
 }
 
 function renderPlanOutput(){
@@ -953,15 +1099,8 @@ function renderPlanOutput(){
 
   if(state.planData){
     wrap.appendChild(renderStructuredPlan(state.planData));
-  } else if(state.planQuickText){
-    var card = document.createElement("div"); card.className = "plan-doc stack";
-    card.innerHTML = '<div class="section-title"><h3>Быстрый шаблон</h3><span class="badge example">Без AI</span></div>' +
-      '<div class="mono" style="white-space:pre-wrap;font-size:13px">'+esc(state.planQuickText)+'</div>' +
-      planActions();
-    wrap.appendChild(card);
-    bindPlanActions(state.planQuickText);
   } else {
-    wrap.appendChild(Object.assign(document.createElement("div"), {className:"empty", textContent:"Заполните карточку проекта и нажмите «Собрать план с Claude» или «Быстрый шаблон»."}));
+    wrap.appendChild(Object.assign(document.createElement("div"), {className:"empty", textContent:"Заполните карточку проекта и нажмите «Собрать промоплан»."}));
   }
   root.appendChild(wrap);
 }
@@ -976,73 +1115,68 @@ function bindPlanActions(text){
     catch(e){ toast("Не удалось скопировать — выделите текст вручную"); }
   });
   var d = document.getElementById("dlPlan");
-  if(d) d.addEventListener("click", async function(){
-    if(!downloadsFn){ toast("Скачивание недоступно в этом окне"); return; }
-    try{
-      await downloadsFn.save({filename:(state.form.name||"promoplan")+".md", data: text});
-      toast("Файл сохранён");
-    }catch(e){ toast("Не удалось сохранить файл"); }
+  if(d) d.addEventListener("click", function(){
+    saveFile((state.form.name||"promoplan")+".md", text, "text/markdown");
   });
 }
 
 function renderStructuredPlan(p){
   var card = document.createElement("div"); card.className = "plan-doc stack";
   var launch = state.form.launch;
+  var L = PLAN_LABELS[state.lang] || PLAN_LABELS.ru;
   var md = [];
   md.push("# Промоплан: "+(state.form.name||"проект"));
   md.push("");
-  md.push("**Посыл:** "+ (p.message||"—"));
-  md.push("**Слоган:** "+ (p.slogan||"—"));
-  md.push("**Позиционирование:** "+ (p.positioning||"—"));
+  md.push("**"+L.message+":** "+ (p.message||"—"));
+  md.push("**"+L.slogan+":** "+ (p.slogan||"—"));
+  md.push("**"+L.positioning+":** "+ (p.positioning||"—"));
   md.push("");
-  md.push("## Контент-рубрики");
+  md.push("## "+L.rubrics);
   (p.rubrics||[]).forEach(function(r){ md.push("- "+r); });
   md.push("");
-  md.push("## Идеи Reels/Shorts");
-  (p.reels||[]).forEach(function(r,i){ md.push((i+1)+". ["+(r.platform||"")+", "+(r.timing||"")+"] "+(r.hook||"")+" — "+(r.desc||"")); });
+  md.push("## "+L.reels);
+  (p.reels||[]).forEach(function(r,i){ md.push((i+1)+". ["+(r.platform||"")+", "+(r.timing||"")+"] "+(r.hook||"")+(r.desc?" — "+r.desc:"")); });
   md.push("");
-  md.push("## График");
+  md.push("## "+L.schedule);
   (p.stages||[]).forEach(function(s){ md.push("- **"+(s.t||"")+"**: "+(s.action||"")); });
   md.push("");
-  md.push("## Метрики (ориентиры)");
+  md.push("## "+L.metrics);
   (p.metrics||[]).forEach(function(m){ md.push("- "+(m.name||"")+": "+(m.target||"")); });
   md.push("");
-  md.push("## Риски");
+  md.push("## "+L.risks);
   (p.risks||[]).forEach(function(r){ md.push("- "+r); });
   md.push("");
-  md.push("## Чек-лист на эту неделю");
+  md.push("## "+L.checklist);
   (p.checklist||[]).forEach(function(c){ md.push("- [ ] "+c); });
   var mdText = md.join("\n");
 
   card.innerHTML =
     '<div class="section-title">' +
       '<h3>'+esc(state.form.name||"Промоплан")+'</h3>' +
-      '<span class="countdown">'+ (launch ? '📅 <span class="num" id="countdownVal">'+countdownText()+'</span>' : 'дата запуска не указана') +'</span>' +
+      '<span class="badge example">'+L.badge+'</span>' +
+      '<span class="countdown">'+ (launch ? '📅 <span class="num" id="countdownVal">'+countdownText()+'</span>' : L.launchUnset) +'</span>' +
     '</div>' +
-    '<h4>Посыл и позиционирование</h4>' +
+    '<h4>'+L.message+'</h4>' +
     '<div><strong>'+esc(p.message||"")+'</strong></div>' +
-    '<div class="hint">Слоган: «'+esc(p.slogan||"")+'»</div>' +
+    '<div class="hint">'+L.slogan+': «'+esc(p.slogan||"")+'»</div>' +
     '<div>'+esc(p.positioning||"")+'</div>' +
-    '<h4>Контент-рубрики</h4>' +
+    '<h4>'+L.rubrics+'</h4>' +
     '<ul style="margin:0;padding-left:20px">'+(p.rubrics||[]).map(function(r){return '<li>'+esc(r)+'</li>';}).join("")+'</ul>' +
-    '<h4>Идеи Reels / Shorts</h4>' +
+    '<h4>'+L.reels+'</h4>' +
     '<div class="reel-grid">'+(p.reels||[]).map(function(r){
-      return '<div class="reel-card"><span class="plat">'+esc(r.platform||"")+' · '+esc(r.timing||"")+'</span><strong>'+esc(r.hook||"")+'</strong><div style="color:var(--muted)">'+esc(r.desc||"")+'</div></div>';
+      return '<div class="reel-card"><span class="plat">'+esc(r.platform||"")+' · '+esc(r.timing||"")+'</span><strong>'+esc(r.hook||"")+'</strong>'+(r.desc?'<div style="color:var(--muted)">'+esc(r.desc)+'</div>':'')+'</div>';
     }).join("")+'</div>' +
-    '<h4>График</h4>' +
+    '<h4>'+L.schedule+'</h4>' +
     '<div>'+(p.stages||[]).map(function(s){return '<div class="stage-row"><div class="stage-t mono">'+esc(s.t||"")+'</div><div>'+esc(s.action||"")+'</div></div>';}).join("")+'</div>' +
-    '<h4>Метрики</h4>' +
+    '<h4>'+L.metrics+'</h4>' +
     '<div class="metric-grid">'+(p.metrics||[]).map(function(m){return '<div class="metric-tile"><div class="l">'+esc(m.name||"")+'</div><div class="v">'+esc(m.target||"")+'</div></div>';}).join("")+'</div>' +
-    '<h4>Риски</h4>' +
+    '<h4>'+L.risks+'</h4>' +
     '<ul style="margin:0;padding-left:20px">'+(p.risks||[]).map(function(r){return '<li>'+esc(r)+'</li>';}).join("")+'</ul>' +
-    '<h4>Чек-лист на эту неделю</h4>' +
+    '<h4>'+L.checklist+'</h4>' +
     '<ul style="margin:0;padding-left:20px">'+(p.checklist||[]).map(function(c){return '<li>'+esc(c)+'</li>';}).join("")+'</ul>' +
     planActions();
-  bindPlanActionsDeferred(card, mdText);
+  setTimeout(function(){ bindPlanActions(mdText); }, 0);
   return card;
-}
-function bindPlanActionsDeferred(card, text){
-  setTimeout(function(){ bindPlanActions(text); }, 0);
 }
 
 /* =========================================================
@@ -1057,7 +1191,7 @@ function renderSources(){
         step("Выгрузите цифры конкурентов", "Зайдите в 2-3 аналитических сервиса ниже и выпишите подписчиков, охваты, ER по тем же площадкам, что и у вас.") +
         step("Заполните матрицу соцсетей", "Внесите цифры во вкладку «Анализ конкурентов → Соцсети» — ER и охват посчитаются автоматически.") +
         step("Опишите контент своими словами", "5-10 минут наблюдений за лентой конкурента дают больше, чем догадки — внесите их во вкладку «Контент».") +
-        step("Проверьте тренды", "Сверьте гипотезы Claude с TikTok Creative Center / Google Trends и оставьте только релевантные.") +
+        step("Проверьте тренды", "Сверьте предложенные идеи форматов с TikTok Creative Center / Google Trends и оставьте только релевантные.") +
         step("Соберите итог и переходите к промоплану", "Кнопка «Собрать сравнительный анализ» во вкладке «Итог» сведёт всё в один отчёт.") +
       '</div>' +
     '</div>' +
@@ -1089,7 +1223,6 @@ function srcCat(title, items){
 /* ---------- boot ---------- */
 bindTopNav();
 renderAll();
-initCaps();
 
 })();
 </script>
