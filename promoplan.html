@@ -1,0 +1,1078 @@
+<title>Маркетинг Медиа</title>
+<style>
+:root{
+  --paper:#F1F3EE; --ink:#15181C; --muted:#5B6169; --line:#D9DCD3; --card:#FFFFFF;
+  --accent:#E2A33B; --accent-ink:#40300E; --accent-soft:#FBE9C8;
+  --good:#3C8A5B; --good-soft:#DFF0E6; --warn:#C97A24; --warn-soft:#FBEAD3;
+  --bad:#C2453A; --bad-soft:#FBE1DE; --user-row:#FFF4E0; --user-row-line:#EBC888;
+  --shadow:0 1px 2px rgba(20,20,15,.06), 0 4px 16px rgba(20,20,15,.06);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#14171B; --ink:#E9EAE5; --muted:#9BA1A8; --line:#2A2F35; --card:#1B1F24;
+    --accent:#F0AE4C; --accent-ink:#20160A; --accent-soft:#3A2C0F;
+    --good:#57B37D; --good-soft:#193226; --warn:#E8A24F; --warn-soft:#332212;
+    --bad:#E2685C; --bad-soft:#391C1A; --user-row:#2E2712; --user-row-line:#4A3A15;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.35);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#14171B; --ink:#E9EAE5; --muted:#9BA1A8; --line:#2A2F35; --card:#1B1F24;
+  --accent:#F0AE4C; --accent-ink:#20160A; --accent-soft:#3A2C0F;
+  --good:#57B37D; --good-soft:#193226; --warn:#E8A24F; --warn-soft:#332212;
+  --bad:#E2685C; --bad-soft:#391C1A; --user-row:#2E2712; --user-row-line:#4A3A15;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.35);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:"Noto Sans",-apple-system,"Segoe UI",sans-serif;line-height:1.45}
+h1,h2,h3,h4{font-family:"Noto Serif",Georgia,serif;font-weight:700;text-wrap:balance;margin:0}
+.mono,.num{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+a{color:var(--ink)}
+button{font:inherit;cursor:pointer}
+input,textarea,select{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+input:focus,textarea:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+::placeholder{color:var(--muted);opacity:.8}
+
+.app{max-width:1180px;margin:0 auto;padding-inline:20px;padding-block:20px 60px;display:flex;flex-direction:column;gap:18px}
+
+/* header */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.tally{width:12px;height:12px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);flex:none}
+.brand h1{font-size:22px}
+.brand .sub{color:var(--muted);font-size:12.5px}
+.langsw{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--card)}
+.langsw button{border:0;background:transparent;padding:7px 14px;font-size:13px;font-weight:600;color:var(--muted)}
+.langsw button.on{background:var(--accent);color:var(--accent-ink)}
+
+/* nav */
+.nav{display:flex;gap:6px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.nav button{border:0;background:transparent;padding:10px 16px;font-size:14.5px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.nav button.on{color:var(--ink);border-bottom-color:var(--accent)}
+.nav button .n{display:inline-block;margin-left:6px;background:var(--line);color:var(--muted);border-radius:999px;font-size:11px;padding:1px 7px;font-family:"IBM Plex Mono",monospace}
+
+.subnav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+.subnav button{border:1px solid var(--line);background:var(--card);padding:7px 13px;border-radius:999px;font-size:13px;font-weight:600;color:var(--muted)}
+.subnav button.on{color:var(--accent-ink);background:var(--accent);border-color:var(--accent)}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:var(--shadow)}
+.card + .card{margin-top:0}
+.stack{display:flex;flex-direction:column;gap:14px}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.row > *{flex:1;min-width:160px}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.03em}
+.field input,.field select,.field textarea{width:100%}
+.hint{color:var(--muted);font-size:12.5px}
+
+.btn{display:inline-flex;align-items:center;gap:7px;border-radius:9px;padding:9px 15px;font-size:13.5px;font-weight:600;border:1px solid var(--line);background:var(--card);color:var(--ink);white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.05)}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.danger{color:var(--bad)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.sm{padding:6px 11px;font-size:12.5px}
+
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;text-transform:uppercase;letter-spacing:.03em}
+.badge.ai{background:var(--accent-soft);color:var(--accent-ink)}
+.badge.user{background:var(--good-soft);color:var(--good)}
+.badge.example{background:var(--warn-soft);color:var(--warn)}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr.me{background:var(--user-row)}
+tr.me td:first-child{border-left:3px solid var(--user-row-line)}
+.twrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+table input{border:1px solid transparent;background:transparent;padding:4px 6px;width:100%;min-width:70px}
+table input:hover{border-color:var(--line)}
+table input:focus{background:var(--card);border-color:var(--accent)}
+
+.empty{color:var(--muted);font-size:13.5px;padding:18px;text-align:center;border:1px dashed var(--line);border-radius:12px}
+
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:6px 13px;font-size:13px;font-weight:600;background:var(--card);color:var(--muted)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+
+.section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.section-title h3{font-size:17px}
+.section-title h2{font-size:20px}
+
+.comp-card{border:1px solid var(--line);border-radius:12px;padding:14px}
+.comp-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
+.comp-head strong{font-size:14.5px}
+.aiOut{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:13.5px;white-space:pre-wrap}
+.aiOut.thinking{color:var(--muted);font-style:italic}
+
+.bar-row{display:grid;grid-template-columns:140px 1fr 60px;align-items:center;gap:10px;font-size:12.5px}
+.bar-track{position:relative;height:16px;background:var(--paper);border-radius:5px;overflow:visible;border:1px solid var(--line)}
+.bar-fill{height:100%;border-radius:5px;background:var(--accent)}
+.bar-fill.me{background:var(--good)}
+.bar-median{position:absolute;top:-4px;bottom:-4px;width:0;border-left:2px dashed var(--muted)}
+.verdict{font-size:13px;padding:8px 12px;border-radius:9px;margin-top:6px}
+.verdict.up{background:var(--good-soft);color:var(--good)}
+.verdict.down{background:var(--bad-soft);color:var(--bad)}
+
+.trend-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.trend-card{border:1px solid var(--line);border-radius:12px;padding:13px;display:flex;flex-direction:column;gap:6px}
+.trend-card.ai{border-color:var(--accent-soft);background:linear-gradient(180deg,var(--accent-soft) 0%, transparent 40%)}
+
+.plan-doc{border:1px solid var(--line);border-radius:14px;padding:22px;background:var(--card)}
+.plan-doc h4{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-top:18px;margin-bottom:8px}
+.plan-doc h4:first-child{margin-top:0}
+.countdown{display:inline-flex;align-items:baseline;gap:6px;background:var(--accent-soft);color:var(--accent-ink);padding:5px 13px;border-radius:999px;font-size:13px;font-weight:700}
+.countdown .num{font-size:16px;font-family:"IBM Plex Mono",monospace}
+.reel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.reel-card{border:1px solid var(--line);border-radius:11px;padding:12px;font-size:13px;display:flex;flex-direction:column;gap:5px}
+.reel-card .plat{font-size:11px;font-weight:700;color:var(--accent-ink);background:var(--accent-soft);align-self:flex-start;padding:2px 8px;border-radius:6px}
+.stage-row{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
+.stage-row:last-child{border:0}
+.stage-t{width:70px;flex:none;font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--muted)}
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.metric-tile{border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+.metric-tile .l{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.02em}
+.metric-tile .v{font-family:"IBM Plex Mono",monospace;font-size:15px;margin-top:2px}
+
+.src-cat{border:1px solid var(--line);border-radius:12px;padding:15px}
+.src-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.src-item{display:flex;justify-content:space-between;gap:10px;align-items:baseline;font-size:13.5px;padding:6px 0;border-bottom:1px solid var(--line)}
+.src-item:last-child{border:0}
+.src-item a{color:var(--ink);font-weight:600;text-decoration:none;border-bottom:1px solid var(--muted)}
+
+.steps{counter-reset:step;display:flex;flex-direction:column;gap:12px}
+.step{display:flex;gap:12px}
+.step .b{counter-increment:step;flex:none;width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+.step .b::before{content:counter(step)}
+
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:9px 16px;border-radius:9px;font-size:13px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .2s, transform .2s}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
+
+@media (max-width:640px){
+  .bar-row{grid-template-columns:90px 1fr 44px}
+  .row > *{min-width:0}
+}
+</style>
+
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <span class="tally" aria-hidden="true"></span>
+      <div><h1>Маркетинг Медиа</h1><div class="sub">Сравнительный анализ конкурентов и промоплан для теле- и медиапроектов</div></div>
+    </div>
+    <div class="langsw" role="group" aria-label="Язык вывода">
+      <button data-lang="ru">RU</button>
+      <button data-lang="kk">ҚАЗ</button>
+    </div>
+  </div>
+
+  <div class="nav" role="tablist">
+    <button data-tab="analysis" class="on">Анализ конкурентов</button>
+    <button data-tab="plan">Промоплан</button>
+    <button data-tab="sources">Источники данных</button>
+  </div>
+
+  <div id="tab-analysis"></div>
+  <div id="tab-plan" hidden></div>
+  <div id="tab-sources" hidden></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- state ---------- */
+var DEFAULT_STATE = {
+  lang: "ru",
+  form: { type:"", name:"", desc:"", audience:"", launch:"", platforms:[], goal:"", goalNote:"", budget:"" },
+  reg: [],
+  product: {},
+  content: {},
+  mx: { instagram:[], tiktok:[], youtube:[], telegram:[], facebook:[] },
+  trends: [],
+  analysisSummary: "",
+  useAnalysisInPlan: false,
+  planText: "",
+  planQuickText: ""
+};
+var LSKEY = "mmedia_v1";
+var state = loadState();
+
+function loadState(){
+  try{
+    var raw = localStorage.getItem(LSKEY);
+    if(!raw) return seedExample(clone(DEFAULT_STATE));
+    var parsed = JSON.parse(raw);
+    return Object.assign(clone(DEFAULT_STATE), parsed);
+  }catch(e){ return seedExample(clone(DEFAULT_STATE)); }
+}
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+var saveTimer=null;
+function saveState(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(function(){
+    try{ localStorage.setItem(LSKEY, JSON.stringify(state)); }catch(e){}
+  }, 250);
+}
+
+function seedExample(s){
+  s.reg = [
+    {id:"c1", name:"Медиа-конкурент А", note:"Крупный ютуб-канал документалок, ставка на драму", link:"https://example.com/a"},
+    {id:"c2", name:"Телеканал Б", note:"Классическое ТВ + слабый TikTok", link:"https://example.com/b"}
+  ];
+  s.mx.instagram = [
+    {name:"Мой проект (пример)", followers:18000, ppw:4, views:9000, likes:650, comments:40, shares:60, fmt:"Reels, карусели"},
+    {name:"Конкурент А", followers:42000, ppw:3, views:15000, likes:900, comments:55, shares:70, fmt:"Reels"},
+    {name:"Конкурент Б", followers:9000, ppw:2, views:2200, likes:180, comments:12, shares:8, fmt:"Фото"}
+  ];
+  return s;
+}
+
+/* ---------- helpers ---------- */
+var uid = function(){ return "id"+Math.random().toString(36).slice(2,10); };
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+function toast(msg){
+  var t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(function(){ t.classList.remove("show"); }, 2600);
+}
+function num(v){ var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+function fmt1(n){ return (Math.round(n*10)/10).toString(); }
+
+var PLATFORMS = ["instagram","tiktok","youtube","telegram","facebook"];
+var PLATFORM_LABEL = {instagram:"Instagram", tiktok:"TikTok", youtube:"YouTube", telegram:"Telegram", facebook:"Facebook"};
+
+/* ---------- claude capabilities ---------- */
+var sampleFn = null, downloadsFn = null;
+(async function initCaps(){
+  try{ sampleFn = await claude.use("sample"); }catch(e){ sampleFn = null; }
+  try{ downloadsFn = await claude.use("downloads"); }catch(e){ downloadsFn = null; }
+  renderAll(); // re-render once caps known so AI buttons reflect availability
+})();
+
+function langInstruction(){
+  return state.lang === "kk"
+    ? "Жауапты міндетті түрде қазақ тілінде жаз (латын әріптерін қоспа)."
+    : "Отвечай строго на русском языке.";
+}
+
+async function askClaude(prompt, opts){
+  if(!sampleFn) throw {code:"not_declared", message:"AI недоступен"};
+  return sampleFn(prompt, opts||{});
+}
+
+/* ---------- render root ---------- */
+var TAB = "analysis";
+var SUBTAB = "content";
+
+function bindTopNav(){
+  document.querySelectorAll(".nav [data-tab]").forEach(function(b){
+    b.addEventListener("click", function(){
+      TAB = b.dataset.tab;
+      document.querySelectorAll(".nav [data-tab]").forEach(function(x){x.classList.toggle("on", x===b);});
+      document.getElementById("tab-analysis").hidden = TAB!=="analysis";
+      document.getElementById("tab-plan").hidden = TAB!=="plan";
+      document.getElementById("tab-sources").hidden = TAB!=="sources";
+      if(TAB==="plan") renderPlan();
+      if(TAB==="sources") renderSources();
+    });
+  });
+  document.querySelectorAll(".langsw [data-lang]").forEach(function(b){
+    b.addEventListener("click", function(){
+      state.lang = b.dataset.lang; saveState(); syncLangButtons();
+    });
+  });
+  syncLangButtons();
+}
+function syncLangButtons(){
+  document.querySelectorAll(".langsw [data-lang]").forEach(function(b){
+    b.classList.toggle("on", b.dataset.lang === state.lang);
+  });
+}
+
+function goToTab(tab, sub){
+  TAB = tab; if(sub) SUBTAB = sub;
+  document.querySelectorAll(".nav [data-tab]").forEach(function(x){x.classList.toggle("on", x.dataset.tab===tab);});
+  document.getElementById("tab-analysis").hidden = tab!=="analysis";
+  document.getElementById("tab-plan").hidden = tab!=="plan";
+  document.getElementById("tab-sources").hidden = tab!=="sources";
+  if(tab==="analysis") renderAnalysis();
+  if(tab==="plan") renderPlan();
+  if(tab==="sources") renderSources();
+}
+
+function renderAll(){
+  renderAnalysis();
+  renderPlan();
+  renderSources();
+}
+
+/* =========================================================
+   TAB: АНАЛИЗ КОНКУРЕНТОВ
+   ========================================================= */
+function renderAnalysis(){
+  var root = document.getElementById("tab-analysis");
+  root.innerHTML =
+    '<div class="card stack">' +
+      '<div class="section-title"><h2>Реестр конкурентов</h2><span class="hint">' + state.reg.length + ' / 10</span></div>' +
+      '<div class="twrap"><table id="regTable"><thead><tr><th>Название</th><th>Заметка / УТП</th><th>Ссылка</th><th></th></tr></thead><tbody></tbody></table></div>' +
+      (state.reg.length===0 ? '<div class="empty">Пока нет конкурентов. Добавьте до 10 — они появятся во всех срезах ниже.</div>' : '') +
+      '<div><button class="btn primary sm" id="addCompBtn" ' + (state.reg.length>=10?'disabled':'') + '>+ Добавить конкурента</button></div>' +
+    '</div>' +
+    '<div class="subnav" id="subnav"></div>' +
+    '<div id="subroot"></div>';
+
+  var subs = [
+    ["content","Контент"], ["product","Продукт"], ["social","Соцсети"], ["trends","Тренды"], ["summary","Итог"]
+  ];
+  var sn = document.getElementById("subnav");
+  subs.forEach(function(s){
+    var b = document.createElement("button");
+    b.textContent = s[1]; b.className = SUBTAB===s[0] ? "on":"";
+    b.addEventListener("click", function(){ SUBTAB = s[0]; renderAnalysis(); });
+    sn.appendChild(b);
+  });
+
+  renderRegTable();
+  document.getElementById("addCompBtn").addEventListener("click", function(){
+    if(state.reg.length>=10) return;
+    state.reg.push({id:uid(), name:"", note:"", link:""});
+    saveState(); renderAnalysis();
+  });
+
+  var sr = document.getElementById("subroot");
+  if(SUBTAB==="content") sr.innerHTML = "", renderContentSub(sr);
+  else if(SUBTAB==="product") sr.innerHTML = "", renderProductSub(sr);
+  else if(SUBTAB==="social") sr.innerHTML = "", renderSocialSub(sr);
+  else if(SUBTAB==="trends") sr.innerHTML = "", renderTrendsSub(sr);
+  else renderSummarySub(sr);
+}
+
+function renderRegTable(){
+  var tb = document.querySelector("#regTable tbody");
+  tb.innerHTML = "";
+  state.reg.forEach(function(c, i){
+    var tr = document.createElement("tr");
+    tr.innerHTML =
+      '<td><input data-f="name" value="'+esc(c.name)+'" placeholder="Название"></td>' +
+      '<td><input data-f="note" value="'+esc(c.note)+'" placeholder="УТП / заметка"></td>' +
+      '<td><input data-f="link" value="'+esc(c.link)+'" placeholder="https://…"></td>' +
+      '<td><button class="btn ghost sm danger" data-del="'+i+'" title="Удалить">✕</button></td>';
+    tr.querySelectorAll("input").forEach(function(inp){
+      inp.addEventListener("input", function(){ c[inp.dataset.f] = inp.value; saveState(); });
+    });
+    tr.querySelector("[data-del]").addEventListener("click", function(){
+      var id = c.id;
+      state.reg.splice(i,1);
+      delete state.product[id]; delete state.content[id];
+      saveState(); renderAnalysis();
+    });
+    tb.appendChild(tr);
+  });
+}
+
+/* --- Контент --- */
+function renderContentSub(root){
+  var wrap = document.createElement("div");
+  wrap.className = "stack";
+  if(state.reg.length===0){
+    wrap.innerHTML = '<div class="empty">Добавьте конкурентов в реестр выше, чтобы описать их контент.</div>';
+    root.appendChild(wrap); return;
+  }
+  state.reg.forEach(function(c){
+    if(!state.content[c.id]) state.content[c.id] = {notes:"", ai:null};
+    var rec = state.content[c.id];
+    var card = document.createElement("div");
+    card.className = "comp-card stack";
+    card.innerHTML =
+      '<div class="comp-head"><strong>'+ (esc(c.name)||"(без названия)") +'</strong>' +
+        (sampleFn ? '<button class="btn sm" data-act="ai">✦ Разобрать контент с Claude</button>' : '') +
+      '</div>' +
+      '<div class="field"><label>Наблюдения: что и как публикует (рубрики, тон, форматы, примеры)</label>' +
+        '<textarea rows="3" placeholder="Например: 3 Reels в неделю, юмористический тон, разбор закулисья съёмок…">'+esc(rec.notes)+'</textarea></div>' +
+      '<div id="aiout"></div>';
+    var ta = card.querySelector("textarea");
+    ta.addEventListener("input", function(){ rec.notes = ta.value; saveState(); });
+    var aiBtn = card.querySelector('[data-act="ai"]');
+    var out = card.querySelector("#aiout");
+    function renderOut(){
+      out.innerHTML = "";
+      if(rec.aiThinking){
+        var d = document.createElement("div"); d.className="aiOut thinking"; d.textContent="Думаю…"; out.appendChild(d); return;
+      }
+      if(rec.ai){
+        var box = document.createElement("div"); box.className="aiOut";
+        box.innerHTML = '<span class="badge ai">Разбор Claude</span><div style="margin-top:8px">'+esc(rec.ai).replace(/\n/g,"<br>")+'</div>';
+        out.appendChild(box);
+      }
+    }
+    renderOut();
+    if(aiBtn) aiBtn.addEventListener("click", async function(){
+      if(!rec.notes.trim()){ toast("Сначала опишите наблюдения по этому конкуренту"); return; }
+      rec.aiThinking = true; renderOut();
+      try{
+        var prompt = "Ты помогаешь маркетологу медиакомпании структурировать наблюдения о контенте конкурента.\n" +
+          "Конкурент: " + (c.name||"без названия") + ". Заметка: " + (c.note||"—") + ".\n" +
+          "Сырые наблюдения пользователя (единственный источник фактов, ничего не выдумывай сверх них):\n" + rec.notes + "\n\n" +
+          "Структурируй в разделы: 1) Темы/рубрики 2) Тон и формат подачи 3) Паттерн частоты публикаций 4) Чего не хватает (белое пятно/идея для отстройки нашего проекта). " +
+          "Не придумывай фактов о контенте, которых нет в наблюдениях. " + langInstruction();
+        var res = await askClaude(prompt, {modelTier:"default"});
+        rec.ai = res.text;
+      }catch(e){
+        toast(aiErrorCopy(e));
+      }
+      rec.aiThinking = false; saveState(); renderOut();
+    });
+    wrap.appendChild(card);
+  });
+  root.appendChild(wrap);
+}
+
+/* --- Продукт --- */
+function renderProductSub(root){
+  var wrap = document.createElement("div"); wrap.className="stack";
+  var top = document.createElement("div");
+  top.className = "section-title";
+  top.innerHTML = '<h3>Сравнение по продукту</h3>' + (sampleFn ? '<button class="btn sm" id="fillGaps">✦ Заполнить пробелы с Claude</button>' : '');
+  wrap.appendChild(top);
+
+  var cols = [["positioning","Позиционирование"],["usp","УТП"],["format","Формат/продукт"],["audience","Аудитория"],["weak","Слабое место"]];
+  var tw = document.createElement("div"); tw.className="twrap";
+  var rows = [{id:"__me", name:"Мой проект", isMe:true}].concat(state.reg);
+  var html = '<table><thead><tr><th>Проект</th>' + cols.map(function(c){return '<th>'+c[1]+'</th>';}).join("") + '</tr></thead><tbody>';
+  rows.forEach(function(r){
+    if(!state.product[r.id]) state.product[r.id] = {};
+    var rec = state.product[r.id];
+    html += '<tr class="'+(r.isMe?"me":"")+'"><td><strong>'+esc(r.isMe? (state.form.name||"Мой проект") : r.name || "(без названия)")+'</strong></td>';
+    cols.forEach(function(c){
+      html += '<td><input data-row="'+r.id+'" data-col="'+c[0]+'" value="'+esc(rec[c[0]]||"")+'" placeholder="—"></td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  tw.innerHTML = html;
+  tw.querySelectorAll("input").forEach(function(inp){
+    inp.addEventListener("input", function(){
+      state.product[inp.dataset.row][inp.dataset.col] = inp.value; saveState();
+    });
+  });
+  wrap.appendChild(tw);
+  if(state.reg.length===0) wrap.appendChild(Object.assign(document.createElement("div"), {className:"empty", textContent:"Добавьте конкурентов в реестр, чтобы сравнить продукт."}));
+  wrap.appendChild(Object.assign(document.createElement("div"), {className:"hint", textContent:"Гипотезы Claude помечаются отдельно и не заменяют введённые вами данные."}));
+  root.appendChild(wrap);
+
+  var fillBtn = document.getElementById("fillGaps");
+  if(fillBtn) fillBtn.addEventListener("click", async function(){
+    if(state.reg.length===0){ toast("Сначала добавьте конкурентов"); return; }
+    fillBtn.disabled = true; fillBtn.textContent = "Думаю…";
+    try{
+      var payload = state.reg.map(function(r){ return {id:r.id, name:r.name, note:r.note}; });
+      var prompt = "Для медиапроекта заполни ПРОБЕЛЫ в сравнительной таблице по продукту для следующих конкурентов (только по названию и заметке — это гипотезы, а не факты):\n" +
+        JSON.stringify(payload) + "\n" +
+        "Верни JSON-массив объектов вида {id, positioning, usp, format, audience, weak} — короткие фразы (до 12 слов), по-русски одной темой на поле. " + langInstruction() +
+        " Ответь только JSON-массивом.";
+      var res = await sampleFn.json(prompt, {modelTier:"default"});
+      (Array.isArray(res)?res:[]).forEach(function(item){
+        var rec = state.product[item.id]; if(!rec) return;
+        cols.forEach(function(c){
+          if(!rec[c[0]] && item[c[0]]) rec[c[0]] = String(item[c[0]]);
+        });
+      });
+      saveState(); renderAnalysis();
+      toast("Пробелы заполнены — гипотезы Claude");
+    }catch(e){ toast(aiErrorCopy(e)); }
+    fillBtn.disabled = false;
+  });
+}
+
+/* --- Соцсети --- */
+var SOCIAL_COLS = [
+  ["name","Аккаунт"],["followers","Подписчики"],["ppw","Постов/нед"],["views","Ср. просмотры"],
+  ["likes","Ср. лайки"],["comments","Ср. комментарии"],["shares","Ср. репост+сохр"],["fmt","Форматы"]
+];
+function computeER(row){
+  var f = num(row.followers); if(f<=0) return 0;
+  return (num(row.likes)+num(row.comments)+num(row.shares)) / f * 100;
+}
+function computeReach(row){
+  var f = num(row.followers); if(f<=0) return 0;
+  return num(row.views) / f;
+}
+function median(arr){
+  if(!arr.length) return 0;
+  var s = arr.slice().sort(function(a,b){return a-b;});
+  var m = Math.floor(s.length/2);
+  return s.length%2 ? s[m] : (s[m-1]+s[m])/2;
+}
+
+function renderSocialSub(root){
+  var wrap = document.createElement("div"); wrap.className = "stack";
+  var pnav = document.createElement("div"); pnav.className = "subnav";
+  if(!renderSocialSub._plat) renderSocialSub._plat = "instagram";
+  PLATFORMS.forEach(function(p){
+    var b = document.createElement("button");
+    b.textContent = PLATFORM_LABEL[p]; b.className = renderSocialSub._plat===p?"on":"";
+    b.addEventListener("click", function(){ renderSocialSub._plat=p; renderAnalysis(); });
+    pnav.appendChild(b);
+  });
+  wrap.appendChild(pnav);
+
+  var plat = renderSocialSub._plat;
+  var rows = state.mx[plat];
+
+  var head = document.createElement("div"); head.className="section-title";
+  head.innerHTML = '<h3>'+PLATFORM_LABEL[plat]+'</h3><div class="row" style="flex:none;gap:8px">' +
+    '<button class="btn sm" id="addRow">+ Строка</button>' +
+    '<button class="btn sm" id="expCsv">Экспорт CSV</button>' +
+    '<button class="btn sm danger" id="clearPlat">Очистить площадку</button></div>';
+  wrap.appendChild(head);
+
+  var tw = document.createElement("div"); tw.className = "twrap";
+  var thead = '<thead><tr>' + SOCIAL_COLS.map(function(c){return '<th>'+c[1]+'</th>';}).join("") + '<th>ER%</th><th>Охват/подп.</th><th></th></tr></thead>';
+  var tbody = "<tbody>";
+  rows.forEach(function(r, i){
+    var er = computeER(r), reach = computeReach(r);
+    var isMe = i===0;
+    tbody += '<tr class="'+(isMe?"me":"")+'" data-i="'+i+'">';
+    SOCIAL_COLS.forEach(function(c){
+      var isNum = c[0]!=="name" && c[0]!=="fmt";
+      tbody += '<td><input data-col="'+c[0]+'" type="'+(isNum?"number":"text")+'" value="'+esc(r[c[0]]!=null?r[c[0]]:"")+'"></td>';
+    });
+    tbody += '<td class="num">'+fmt1(er)+'</td><td class="num">'+fmt1(reach)+'</td>';
+    tbody += '<td><button class="btn ghost sm danger" data-del>✕</button></td></tr>';
+  });
+  tbody += "</tbody>";
+  tw.innerHTML = "<table>"+thead+tbody+"</table>";
+  wrap.appendChild(tw);
+
+  if(rows.length===0) wrap.appendChild(Object.assign(document.createElement("div"),{className:"empty",textContent:"Нет данных по этой площадке. Первая строка всегда — «Мой проект»."}));
+
+  wrap.appendChild(Object.assign(document.createElement("div"),{className:"hint",textContent:"ER = (лайки+комментарии+репосты) ÷ подписчики × 100. Охват/подписчики = просмотры ÷ подписчики."}));
+
+  /* comparison charts */
+  if(rows.length>=2){
+    var cmp = document.createElement("div"); cmp.className="card stack";
+    cmp.innerHTML = '<h3>Сравнение по метрикам</h3>';
+    var metrics = [
+      ["ER, %", function(r){return computeER(r);}],
+      ["Охват/подписчики", function(r){return computeReach(r);}],
+      ["Постов/неделю", function(r){return num(r.ppw);}],
+      ["Реакций/нед (лайки+ком+репосты)×ppw", function(r){return (num(r.likes)+num(r.comments)+num(r.shares))*num(r.ppw);}]
+    ];
+    var me = rows[0];
+    var competitors = rows.slice(1);
+    metrics.forEach(function(m){
+      var label = m[0], fn = m[1];
+      var vals = rows.map(fn);
+      var max = Math.max.apply(null, vals.concat([0.001]));
+      var compVals = competitors.map(fn);
+      var med = median(compVals);
+      var block = document.createElement("div");
+      block.innerHTML = '<div style="font-weight:600;font-size:13px;margin-bottom:8px">'+label+'</div>';
+      rows.forEach(function(r,i){
+        var v = vals[i];
+        var pct = Math.min(100, (v/max)*100);
+        var medPct = Math.min(100, (med/max)*100);
+        var br = document.createElement("div"); br.className="bar-row";
+        br.innerHTML = '<div class="mono" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(r.name||(i===0?"Мой проект":"—"))+'</div>' +
+          '<div class="bar-track"><div class="bar-fill'+(i===0?" me":"")+'" style="width:'+pct+'%"></div>' +
+          (i>0 ? '<div class="bar-median" style="left:'+medPct+'%"></div>' : '') +
+          '</div><div class="num" style="font-size:12px;text-align:right">'+fmt1(v)+'</div>';
+        block.appendChild(br);
+      });
+      if(me && competitors.length){
+        var myVal = fn(me);
+        var diff = med>0 ? ((myVal-med)/med*100) : (myVal>0?100:0);
+        var v = document.createElement("div");
+        v.className = "verdict " + (diff>=0?"up":"down");
+        v.textContent = "Мой проект " + (diff>=0?"выше":"ниже") + " медианы конкурентов на " + fmt1(Math.abs(diff)) + "%";
+        block.appendChild(v);
+      }
+      cmp.appendChild(block);
+    });
+    wrap.appendChild(cmp);
+  }
+
+  root.appendChild(wrap);
+
+  /* bindings */
+  tw.querySelectorAll("input").forEach(function(inp){
+    inp.addEventListener("input", function(){
+      var tr = inp.closest("tr"); var i = +tr.dataset.i;
+      var col = inp.dataset.col;
+      rows[i][col] = inp.type==="number" ? num(inp.value) : inp.value;
+      saveState();
+      // live-update only the ER/reach cells + charts without full re-render jank on every keystroke of same row is fine to re-render whole subtab, but that's expensive per keypress -> update just this row's computed cells
+      var er = computeER(rows[i]), reach = computeReach(rows[i]);
+      tr.children[tr.children.length-3].textContent = fmt1(er);
+      tr.children[tr.children.length-2].textContent = fmt1(reach);
+    });
+    inp.addEventListener("change", function(){ renderAnalysis(); });
+  });
+  tw.querySelectorAll("[data-del]").forEach(function(b){
+    b.addEventListener("click", function(){
+      var i = +b.closest("tr").dataset.i;
+      rows.splice(i,1); saveState(); renderAnalysis();
+    });
+  });
+  document.getElementById("addRow").addEventListener("click", function(){
+    rows.push({name: rows.length===0 ? "Мой проект" : "", followers:0, ppw:0, views:0, likes:0, comments:0, shares:0, fmt:""});
+    saveState(); renderAnalysis();
+  });
+  document.getElementById("clearPlat").addEventListener("click", function(){
+    state.mx[plat] = []; saveState(); renderAnalysis();
+  });
+  document.getElementById("expCsv").addEventListener("click", async function(){
+    if(!rows.length){ toast("Нет данных для экспорта"); return; }
+    var header = SOCIAL_COLS.map(function(c){return c[1];}).concat(["ER %","Охват/подписчики"]).join(";");
+    var lines = rows.map(function(r){
+      return SOCIAL_COLS.map(function(c){ return '"'+String(r[c[0]]!=null?r[c[0]]:"").replace(/"/g,'""')+'"'; })
+        .concat([fmt1(computeER(r)), fmt1(computeReach(r))]).join(";");
+    });
+    var csv = "﻿" + header + "\n" + lines.join("\n");
+    if(downloadsFn){
+      try{
+        await downloadsFn.save({filename: plat+"_sravnenie.csv", data: csv});
+        toast("Файл сохранён");
+      }catch(e){ toast("Не удалось сохранить файл"); }
+    } else {
+      toast("Скачивание недоступно в этом окне");
+    }
+  });
+}
+
+/* --- Тренды --- */
+function renderTrendsSub(root){
+  var wrap = document.createElement("div"); wrap.className="stack";
+  var head = document.createElement("div"); head.className="section-title";
+  head.innerHTML = '<h3>Тренды и форматы</h3><div class="row" style="flex:none;gap:8px">' +
+    '<button class="btn sm" id="addTrend">+ Добавить вручную</button>' +
+    (sampleFn ? '<button class="btn sm primary" id="aiTrends">✦ Предложить тренды с Claude</button>' : '') +
+    '</div>';
+  wrap.appendChild(head);
+
+  var grid = document.createElement("div"); grid.className="trend-grid";
+  state.trends.forEach(function(t, i){
+    var card = document.createElement("div");
+    card.className = "trend-card" + (t.source==="ai" ? " ai" : "");
+    card.innerHTML =
+      '<span class="badge '+(t.source==="ai"?"ai":"user")+'">'+(t.source==="ai"?"Гипотеза Claude":"Добавлено вручную")+'</span>' +
+      '<input data-f="title" value="'+esc(t.title)+'" placeholder="Название тренда" style="font-weight:700">' +
+      '<textarea data-f="desc" rows="2" placeholder="Описание">'+esc(t.desc)+'</textarea>' +
+      '<input data-f="link" value="'+esc(t.link)+'" placeholder="Ссылка на источник (необязательно)">' +
+      '<div><button class="btn ghost sm danger" data-del>Удалить</button></div>';
+    card.querySelectorAll("[data-f]").forEach(function(el){
+      el.addEventListener("input", function(){ t[el.dataset.f] = el.value; saveState(); });
+    });
+    card.querySelector("[data-del]").addEventListener("click", function(){
+      state.trends.splice(i,1); saveState(); renderAnalysis();
+    });
+    grid.appendChild(card);
+  });
+  wrap.appendChild(grid);
+  if(state.trends.length===0) wrap.appendChild(Object.assign(document.createElement("div"),{className:"empty",textContent:"Пока нет трендов. Добавьте вручную или запросите гипотезы у Claude."}));
+  root.appendChild(wrap);
+
+  document.getElementById("addTrend").addEventListener("click", function(){
+    state.trends.push({id:uid(), title:"", desc:"", link:"", source:"user"});
+    saveState(); renderAnalysis();
+  });
+  var aiBtn = document.getElementById("aiTrends");
+  if(aiBtn) aiBtn.addEventListener("click", async function(){
+    aiBtn.disabled = true; aiBtn.textContent = "Думаю…";
+    try{
+      var ctx = "Тип проекта: " + (state.form.type||"—") + ". Название: " + (state.form.name||"—") +
+        ". Площадки: " + (state.form.platforms||[]).join(", ") + ". Аудитория: " + (state.form.audience||"—") + ".";
+      var prompt = "Ты — консультант по SMM для медиапроекта (сериал/ТВ/документалка). " + ctx +
+        " Предложи 5 гипотез актуальных трендов/форматов коротких видео под этот проект и площадки. " +
+        "У тебя нет доступа к живым данным — явно обозначь в описании каждого тренда одной фразой, что это гипотеза без доступа к live-данным и её нужно проверить через источники. " +
+        "Верни JSON-массив из 5 объектов {title, desc}, title короткий (до 8 слов). " + langInstruction() + " Ответь только JSON.";
+      var res = await sampleFn.json(prompt, {modelTier:"default"});
+      (Array.isArray(res)?res:[]).forEach(function(item){
+        state.trends.push({id:uid(), title:String(item.title||""), desc:String(item.desc||""), link:"", source:"ai"});
+      });
+      saveState(); renderAnalysis();
+    }catch(e){ toast(aiErrorCopy(e)); }
+  });
+}
+
+/* --- Итог --- */
+function renderSummarySub(root){
+  var wrap = document.createElement("div"); wrap.className="stack card";
+  var canBuild = state.reg.length>0;
+  wrap.innerHTML =
+    '<div class="section-title"><h3>Консолидированный отчёт</h3>' +
+      (sampleFn ? '<button class="btn primary sm" id="buildSummary" '+(canBuild?"":"disabled")+'>✦ Собрать сравнительный анализ</button>' : '<span class="hint">AI недоступен — соберите анализ вручную из срезов выше.</span>') +
+    '</div>';
+  if(!canBuild) wrap.innerHTML += '<div class="empty">Добавьте хотя бы одного конкурента, чтобы собрать анализ.</div>';
+  var out = document.createElement("div");
+  if(state.summaryThinking){ out.innerHTML = '<div class="aiOut thinking">Собираю анализ по всем срезам…</div>'; }
+  else if(state.analysisSummary){
+    out.innerHTML = '<div class="aiOut">'+esc(state.analysisSummary).replace(/\n/g,"<br>")+'</div>' +
+      '<div class="row" style="margin-top:10px"><button class="btn primary sm" id="useInPlan">Использовать в промоплане →</button></div>';
+  } else {
+    out.innerHTML = '<div class="hint">Отчёт объединит данные срезов «Продукт», «Контент», «Соцсети», «Тренды» в один вывод: общая оценка, незанятые ниши и 5 рекомендаций для промоплана.</div>';
+  }
+  wrap.appendChild(out);
+  root.appendChild(wrap);
+
+  var btn = document.getElementById("buildSummary");
+  if(btn) btn.addEventListener("click", async function(){
+    state.summaryThinking = true; renderAnalysis();
+    try{
+      var data = {
+        myProject: state.form,
+        competitors: state.reg,
+        product: state.product,
+        content: Object.keys(state.content).reduce(function(acc,k){ acc[k] = {notes: state.content[k].notes, ai: state.content[k].ai}; return acc; }, {}),
+        socials: state.mx,
+        trends: state.trends
+      };
+      var prompt = "Ты — маркетинговый аналитик медиаагентства. На основе данных ниже собери СВЯЗНЫЙ сравнительный отчёт о конкурентах для проекта «"+(state.form.name||"наш проект")+"».\n" +
+        "Данные (JSON, могут быть неполными — работай с тем, что есть):\n" + JSON.stringify(data).slice(0,50000) + "\n\n" +
+        "Структура ответа:\n1) Общий вывод (3-5 предложений)\n2) Сравнение по продукту\n3) Сравнение по контенту\n4) Сравнение по соцсетям (используй посчитанные ER/охват, если есть)\n5) Тренды к использованию\n6) Незанятые ниши\n7) 5 рекомендаций для промоплана\n" +
+        "Пиши по-деловому, без выдумывания цифр, которых нет в данных; если данных мало — так и скажи. " + langInstruction();
+      var res = await askClaude(prompt, {modelTier:"default"});
+      state.analysisSummary = res.text;
+    }catch(e){ toast(aiErrorCopy(e)); }
+    state.summaryThinking = false; saveState(); renderAnalysis();
+  });
+  var useBtn = document.getElementById("useInPlan");
+  if(useBtn) useBtn.addEventListener("click", function(){
+    state.useAnalysisInPlan = true; saveState();
+    goToTab("plan");
+    toast("Анализ передан в промоплан");
+  });
+}
+
+function aiErrorCopy(e){
+  var code = e && e.code;
+  var map = {
+    not_granted: "Использование Claude не разрешено для этой страницы.",
+    sampling_disabled: "Claude недоступен для этого аккаунта.",
+    not_declared: "AI-функции сейчас недоступны в этом окне.",
+    rate_limited: "Слишком много запросов — попробуйте чуть позже.",
+    prompt_too_large: "Слишком много данных для запроса — сократите текст.",
+    invalid_json: "Не удалось разобрать ответ — попробуйте ещё раз.",
+    refused: "Claude отклонил этот запрос.",
+    empty_completion: "Пустой ответ — попробуйте переформулировать.",
+    cancelled: "Запрос отменён."
+  };
+  return map[code] || "Не получилось получить ответ от Claude.";
+}
+
+/* =========================================================
+   TAB: ПРОМОПЛАН
+   ========================================================= */
+var PROJECT_TYPES = ["Сериал","Телепрограмма","Фильм","Документальный проект","Медиа-бренд","Подкаст"];
+var GOALS = ["Просмотры","Охват","Подписчики","Вовлечение","Трафик","Репутация"];
+var BUDGETS = [["none","Нет"],["small","Небольшой"],["medium","Средний"],["large","Крупный"]];
+
+function renderPlan(){
+  var root = document.getElementById("tab-plan");
+  var f = state.form;
+  root.innerHTML = "";
+
+  var card = document.createElement("div"); card.className = "card stack";
+  card.innerHTML =
+    '<h2>Карточка проекта</h2>' +
+    '<div class="row">' +
+      '<div class="field"><label>Тип проекта</label><select id="f_type"><option value="">— выберите —</option>' +
+        PROJECT_TYPES.map(function(t){return '<option '+(f.type===t?"selected":"")+'>'+t+'</option>';}).join("") + '</select></div>' +
+      '<div class="field"><label>Название</label><input id="f_name" value="'+esc(f.name)+'" placeholder="Например, «Таксист — Байып кет»"></div>' +
+    '</div>' +
+    '<div class="field"><label>Описание</label><textarea id="f_desc" rows="2" placeholder="О чём проект, в 1-2 предложениях">'+esc(f.desc)+'</textarea></div>' +
+    '<div class="row">' +
+      '<div class="field"><label>Аудитория</label><input id="f_aud" value="'+esc(f.audience)+'" placeholder="Кто целевой зритель"></div>' +
+      '<div class="field"><label>Дата запуска</label><input id="f_launch" type="date" value="'+esc(f.launch)+'"></div>' +
+    '</div>' +
+    '<div class="field"><label>Доступные площадки</label><div class="chips" id="platChips"></div></div>' +
+    '<div class="row">' +
+      '<div class="field"><label>Главная задача</label><select id="f_goal"><option value="">— выберите —</option>' +
+        GOALS.map(function(g){return '<option '+(f.goal===g?"selected":"")+'>'+g+'</option>';}).join("") + '</select></div>' +
+      '<div class="field"><label>Бюджет</label><select id="f_budget"><option value="">— выберите —</option>' +
+        BUDGETS.map(function(b){return '<option value="'+b[0]+'" '+(f.budget===b[0]?"selected":"")+'>'+b[1]+'</option>';}).join("") + '</select></div>' +
+    '</div>' +
+    '<div class="field"><label>Уточнение задачи</label><input id="f_goalnote" value="'+esc(f.goalNote)+'" placeholder="Например: удержать зрителя до 3 серии"></div>' +
+    (state.analysisSummary ? '<label style="display:flex;gap:8px;align-items:center;font-size:13.5px"><input type="checkbox" id="useAnalysis" '+(state.useAnalysisInPlan?"checked":"")+' style="width:auto"> Учитывать сравнительный анализ конкурентов (собран во вкладке «Анализ конкурентов»)</label>' : '') +
+    '<div class="row" style="margin-top:4px">' +
+      (sampleFn ? '<button class="btn primary" id="buildPlan">✦ Собрать план с Claude</button>' : '') +
+      '<button class="btn" id="quickPlan">⚡ Быстрый шаблон (без AI)</button>' +
+    '</div>';
+  root.appendChild(card);
+
+  // platform chips
+  var chipsWrap = card.querySelector("#platChips");
+  PLATFORMS.concat(["podcast_platforms"]).forEach(function(){}); // noop guard
+  var allPlats = ["Instagram","TikTok","YouTube","Telegram","Facebook","VK"];
+  allPlats.forEach(function(p){
+    var chip = document.createElement("button");
+    chip.className = "chip" + (f.platforms.indexOf(p)>=0 ? " on":"");
+    chip.textContent = p; chip.type="button";
+    chip.addEventListener("click", function(){
+      var idx = f.platforms.indexOf(p);
+      if(idx>=0) f.platforms.splice(idx,1); else f.platforms.push(p);
+      saveState(); renderPlan();
+    });
+    chipsWrap.appendChild(chip);
+  });
+
+  ["type","name","desc","aud","launch","goal","goalnote","budget"].forEach(function(key){});
+  bind("f_type","type"); bind("f_name","name"); bind("f_desc","desc"); bind("f_aud","audience");
+  bind("f_launch","launch"); bind("f_goal","goal"); bind("f_goalnote","goalNote"); bind("f_budget","budget");
+  function bind(id, key){
+    var el = document.getElementById(id); if(!el) return;
+    el.addEventListener("input", function(){ f[key]=el.value; saveState(); refreshCountdownOnly(); });
+    el.addEventListener("change", function(){ f[key]=el.value; saveState(); });
+  }
+  var chk = document.getElementById("useAnalysis");
+  if(chk) chk.addEventListener("change", function(){ state.useAnalysisInPlan = chk.checked; saveState(); });
+
+  document.getElementById("quickPlan").addEventListener("click", function(){
+    state.planQuickText = buildQuickTemplate();
+    state.planText = "";
+    saveState(); renderPlanOutput();
+  });
+  var buildBtn = document.getElementById("buildPlan");
+  if(buildBtn) buildBtn.addEventListener("click", async function(){
+    buildBtn.disabled = true; buildBtn.textContent = "Собираю…";
+    try{
+      var ctx = "Тип: "+(f.type||"—")+". Название: "+(f.name||"—")+". Описание: "+(f.desc||"—")+
+        ". Аудитория: "+(f.audience||"—")+". Дата запуска: "+(f.launch||"не указана")+
+        ". Площадки: "+(f.platforms.join(", ")||"не указаны")+". Задача: "+(f.goal||"—")+" ("+(f.goalNote||"")+")"+
+        ". Бюджет: "+(f.budget||"—")+".";
+      var analysisPart = (state.useAnalysisInPlan && state.analysisSummary) ? ("\n\nУчти этот сравнительный анализ конкурентов:\n"+state.analysisSummary.slice(0,8000)) : "";
+      var prompt = "Ты — маркетолог медиаагентства, составляешь черновик промоплана продвижения на одну страницу.\nПроект: " + ctx + analysisPart +
+        "\n\nВерни JSON-объект строго такой формы:\n" +
+        '{"message": "посыл кампании", "slogan": "слоган", "positioning": "позиционирование в 1-2 предложения", ' +
+        '"rubrics": ["контент-рубрика 1", "..."], ' +
+        '"reels": [{"hook":"хук на первые 3 секунды","platform":"площадка","timing":"T-7","desc":"о чём ролик"}, ... 6 штук], ' +
+        '"stages": [{"t":"T-30","action":"что делаем"}, ... 5-6 этапов от T-30 до T+30], ' +
+        '"metrics": [{"name":"метрика","target":"ориентир"}, ... 5-7 штук], ' +
+        '"risks": ["риск 1", "..."], ' +
+        '"checklist": ["действие на этой неделе", "..."]}\n' +
+        "Не выдумывай точных цифр статистики — метрики давай как реалистичные ориентиры/цели, а не факты. " + langInstruction() + " Ответь только JSON.";
+      var res = await sampleFn.json(prompt, {modelTier:"complex"});
+      state.planData = res;
+      state.planQuickText = "";
+      saveState();
+      renderPlanOutput();
+    }catch(e){ toast(aiErrorCopy(e)); }
+    buildBtn.disabled = false; buildBtn.textContent = "✦ Собрать план с Claude";
+  });
+
+  renderPlanOutput();
+}
+
+function refreshCountdownOnly(){
+  var el = document.getElementById("countdownVal");
+  if(!el) return;
+  el.textContent = countdownText();
+}
+function countdownText(){
+  if(!state.form.launch) return "дата не указана";
+  var launch = new Date(state.form.launch+"T00:00:00");
+  var now = new Date(); now.setHours(0,0,0,0);
+  var days = Math.round((launch-now)/86400000);
+  if(days>0) return "T-"+days+" (до запуска "+days+" дн.)";
+  if(days<0) return "T+"+Math.abs(days)+" ("+Math.abs(days)+" дн. с запуска)";
+  return "T-0 — день запуска";
+}
+
+function buildQuickTemplate(){
+  var f = state.form;
+  var type = f.type || "медиапроект";
+  var name = f.name || "проект";
+  var goal = f.goal || "Охват";
+  var plats = f.platforms.length ? f.platforms : ["Instagram","YouTube"];
+  var lines = [];
+  lines.push("ПОСЫЛ: «"+name+"» — новый повод зрителю включить именно это.");
+  lines.push("СЛОГАН: Смотри первым.");
+  lines.push("ПОЗИЦИОНИРОВАНИЕ: "+type+" для аудитории «"+(f.audience||"широкая аудитория")+"», фокус на задаче «"+goal+"».");
+  lines.push("");
+  lines.push("КОНТЕНТ-РУБРИКИ:");
+  lines.push("— Тизеры и анонсы");
+  lines.push("— Закулисье / бэкстейдж");
+  lines.push("— Реакции и цитаты героев/аудитории");
+  lines.push("— Разбор ключевых моментов");
+  lines.push("");
+  lines.push("ИДЕИ REELS/SHORTS:");
+  var hooks = ["Самый неожиданный момент за 3 секунды", "Вопрос, на который ответит серия", "Цитата, которая цепляет", "До/после — контраст", "Личное признание героя", "Провокационный тизер"];
+  for(var i=0;i<6;i++){
+    var t = i<2 ? "T-14" : i<4 ? "T-3" : "T+"+(i-3);
+    lines.push((i+1)+". ["+plats[i%plats.length]+", "+t+"] Хук: "+hooks[i]);
+  }
+  lines.push("");
+  lines.push("ГРАФИК:");
+  lines.push("T-30: сформировать контент-план и рубрики");
+  lines.push("T-14: тизеры на всех площадках");
+  lines.push("T-7: анонс даты и активация блогеров");
+  lines.push("T0: премьерный пост + сторис-эстафета");
+  lines.push("T+7: разбор реакций, усиление удачных форматов");
+  lines.push("T+30: итоговый отчёт и вывод на устойчивый темп публикаций");
+  lines.push("");
+  lines.push("МЕТРИКИ (ориентиры, не факты):");
+  lines.push("— Охват первой недели");
+  lines.push("— ER на ключевых постах");
+  lines.push("— Прирост подписчиков");
+  lines.push("— Досмотры видео");
+  lines.push("— Упоминания/UGC");
+  lines.push("");
+  lines.push("РИСКИ: перегрузка команды в T-7..T0; недостаточно бюджета на посев; несовпадение тона рубрик с ожиданиями аудитории.");
+  lines.push("");
+  lines.push("ЧЕК-ЛИСТ НА ЭТУ НЕДЕЛЮ: утвердить рубрики → снять 2 тизера → согласовать дату премьеры → выбрать 2-3 блогеров для активации.");
+  return lines.join("\n");
+}
+
+function renderPlanOutput(){
+  var root = document.getElementById("tab-plan");
+  var old = document.getElementById("planOutputWrap");
+  if(old) old.remove();
+  var wrap = document.createElement("div"); wrap.id = "planOutputWrap"; wrap.className = "stack";
+
+  if(state.planData){
+    wrap.appendChild(renderStructuredPlan(state.planData));
+  } else if(state.planQuickText){
+    var card = document.createElement("div"); card.className = "plan-doc stack";
+    card.innerHTML = '<div class="section-title"><h3>Быстрый шаблон</h3><span class="badge example">Без AI</span></div>' +
+      '<div class="mono" style="white-space:pre-wrap;font-size:13px">'+esc(state.planQuickText)+'</div>' +
+      planActions();
+    wrap.appendChild(card);
+    bindPlanActions(state.planQuickText);
+  } else {
+    wrap.appendChild(Object.assign(document.createElement("div"), {className:"empty", textContent:"Заполните карточку проекта и нажмите «Собрать план с Claude» или «Быстрый шаблон»."}));
+  }
+  root.appendChild(wrap);
+}
+
+function planActions(){
+  return '<div class="row" style="margin-top:12px;flex:none"><button class="btn sm" id="copyPlan">Копировать текст</button><button class="btn sm" id="dlPlan">Скачать .md</button></div>';
+}
+function bindPlanActions(text){
+  var c = document.getElementById("copyPlan");
+  if(c) c.addEventListener("click", async function(){
+    try{ await navigator.clipboard.writeText(text); toast("Скопировано"); }
+    catch(e){ toast("Не удалось скопировать — выделите текст вручную"); }
+  });
+  var d = document.getElementById("dlPlan");
+  if(d) d.addEventListener("click", async function(){
+    if(!downloadsFn){ toast("Скачивание недоступно в этом окне"); return; }
+    try{
+      await downloadsFn.save({filename:(state.form.name||"promoplan")+".md", data: text});
+      toast("Файл сохранён");
+    }catch(e){ toast("Не удалось сохранить файл"); }
+  });
+}
+
+function renderStructuredPlan(p){
+  var card = document.createElement("div"); card.className = "plan-doc stack";
+  var launch = state.form.launch;
+  var md = [];
+  md.push("# Промоплан: "+(state.form.name||"проект"));
+  md.push("");
+  md.push("**Посыл:** "+ (p.message||"—"));
+  md.push("**Слоган:** "+ (p.slogan||"—"));
+  md.push("**Позиционирование:** "+ (p.positioning||"—"));
+  md.push("");
+  md.push("## Контент-рубрики");
+  (p.rubrics||[]).forEach(function(r){ md.push("- "+r); });
+  md.push("");
+  md.push("## Идеи Reels/Shorts");
+  (p.reels||[]).forEach(function(r,i){ md.push((i+1)+". ["+(r.platform||"")+", "+(r.timing||"")+"] "+(r.hook||"")+" — "+(r.desc||"")); });
+  md.push("");
+  md.push("## График");
+  (p.stages||[]).forEach(function(s){ md.push("- **"+(s.t||"")+"**: "+(s.action||"")); });
+  md.push("");
+  md.push("## Метрики (ориентиры)");
+  (p.metrics||[]).forEach(function(m){ md.push("- "+(m.name||"")+": "+(m.target||"")); });
+  md.push("");
+  md.push("## Риски");
+  (p.risks||[]).forEach(function(r){ md.push("- "+r); });
+  md.push("");
+  md.push("## Чек-лист на эту неделю");
+  (p.checklist||[]).forEach(function(c){ md.push("- [ ] "+c); });
+  var mdText = md.join("\n");
+
+  card.innerHTML =
+    '<div class="section-title">' +
+      '<h3>'+esc(state.form.name||"Промоплан")+'</h3>' +
+      '<span class="countdown">'+ (launch ? '📅 <span class="num" id="countdownVal">'+countdownText()+'</span>' : 'дата запуска не указана') +'</span>' +
+    '</div>' +
+    '<h4>Посыл и позиционирование</h4>' +
+    '<div><strong>'+esc(p.message||"")+'</strong></div>' +
+    '<div class="hint">Слоган: «'+esc(p.slogan||"")+'»</div>' +
+    '<div>'+esc(p.positioning||"")+'</div>' +
+    '<h4>Контент-рубрики</h4>' +
+    '<ul style="margin:0;padding-left:20px">'+(p.rubrics||[]).map(function(r){return '<li>'+esc(r)+'</li>';}).join("")+'</ul>' +
+    '<h4>Идеи Reels / Shorts</h4>' +
+    '<div class="reel-grid">'+(p.reels||[]).map(function(r){
+      return '<div class="reel-card"><span class="plat">'+esc(r.platform||"")+' · '+esc(r.timing||"")+'</span><strong>'+esc(r.hook||"")+'</strong><div style="color:var(--muted)">'+esc(r.desc||"")+'</div></div>';
+    }).join("")+'</div>' +
+    '<h4>График</h4>' +
+    '<div>'+(p.stages||[]).map(function(s){return '<div class="stage-row"><div class="stage-t mono">'+esc(s.t||"")+'</div><div>'+esc(s.action||"")+'</div></div>';}).join("")+'</div>' +
+    '<h4>Метрики</h4>' +
+    '<div class="metric-grid">'+(p.metrics||[]).map(function(m){return '<div class="metric-tile"><div class="l">'+esc(m.name||"")+'</div><div class="v">'+esc(m.target||"")+'</div></div>';}).join("")+'</div>' +
+    '<h4>Риски</h4>' +
+    '<ul style="margin:0;padding-left:20px">'+(p.risks||[]).map(function(r){return '<li>'+esc(r)+'</li>';}).join("")+'</ul>' +
+    '<h4>Чек-лист на эту неделю</h4>' +
+    '<ul style="margin:0;padding-left:20px">'+(p.checklist||[]).map(function(c){return '<li>'+esc(c)+'</li>';}).join("")+'</ul>' +
+    planActions();
+  bindPlanActionsDeferred(card, mdText);
+  return card;
+}
+function bindPlanActionsDeferred(card, text){
+  setTimeout(function(){ bindPlanActions(text); }, 0);
+}
+
+/* =========================================================
+   TAB: ИСТОЧНИКИ ДАННЫХ
+   ========================================================= */
+function renderSources(){
+  var root = document.getElementById("tab-sources");
+  root.innerHTML =
+    '<div class="card stack">' +
+      '<h2>Сравнительный анализ за один вечер</h2>' +
+      '<div class="steps">' +
+        step("Выгрузите цифры конкурентов", "Зайдите в 2-3 аналитических сервиса ниже и выпишите подписчиков, охваты, ER по тем же площадкам, что и у вас.") +
+        step("Заполните матрицу соцсетей", "Внесите цифры во вкладку «Анализ конкурентов → Соцсети» — ER и охват посчитаются автоматически.") +
+        step("Опишите контент своими словами", "5-10 минут наблюдений за лентой конкурента дают больше, чем догадки — внесите их во вкладку «Контент».") +
+        step("Проверьте тренды", "Сверьте гипотезы Claude с TikTok Creative Center / Google Trends и оставьте только релевантные.") +
+        step("Соберите итог и переходите к промоплану", "Кнопка «Собрать сравнительный анализ» во вкладке «Итог» сведёт всё в один отчёт.") +
+      '</div>' +
+    '</div>' +
+    '<div class="row">' +
+      srcCat("Аналитика аккаунтов конкурентов", [
+        ["Popsters","https://popsters.ru"], ["LiveDune","https://livedune.com"], ["TGStat","https://tgstat.ru"],
+        ["Social Blade","https://socialblade.com"], ["Rival IQ","https://www.rivaliq.com"],
+        ["Fanpage Karma","https://www.fanpagekarma.com"], ["Similarweb","https://www.similarweb.com"]
+      ]) +
+      srcCat("Тренды и вдохновение", [
+        ["trendsee.io","https://trendsee.io"], ["TikTok Creative Center","https://ads.tiktok.com/business/creativecenter"],
+        ["Exploding Topics","https://explodingtopics.com"], ["Google Trends","https://trends.google.com"],
+        ["Pinterest Trends","https://trends.pinterest.com"]
+      ]) +
+      srcCat("Реклама конкурентов и мониторинг упоминаний", [
+        ["Meta Ad Library","https://www.facebook.com/ads/library"], ["YouScan","https://youscan.io"], ["Brand Analytics","https://brandanalytics.ru"]
+      ]) +
+    '</div>';
+}
+function step(title, desc){
+  return '<div class="step"><div class="b"></div><div><strong>'+title+'</strong><div class="hint">'+desc+'</div></div></div>';
+}
+function srcCat(title, items){
+  return '<div class="src-cat" style="flex:1;min-width:260px"><h3 style="font-size:15px">'+title+'</h3><div class="src-list">' +
+    items.map(function(it){ return '<div class="src-item"><span>'+it[0]+'</span><a href="'+it[1]+'" target="_blank" rel="noopener">Открыть ↗</a></div>'; }).join("") +
+    '</div></div>';
+}
+
+/* ---------- boot ---------- */
+bindTopNav();
+renderAll();
+
+})();
+</script>
